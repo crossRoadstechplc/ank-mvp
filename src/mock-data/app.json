@@ -1,0 +1,8 @@
+{
+  "app": {
+    "name": "Ankuaru MVP",
+    "version": "0.1.0",
+    "commodity": "coffee",
+    "environment": "mock"
+  }
+}

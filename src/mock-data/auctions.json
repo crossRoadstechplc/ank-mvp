@@ -1,0 +1,18 @@
+{
+  "auctions": [
+    {
+      "id": "auc_001",
+      "uid": "AUC-001",
+      "auctionType": "reverse",
+      "createdByActorId": "actor_imp_01",
+      "title": "Reverse Auction - Specialty Ethiopian Green Coffee",
+      "commodity": "coffee",
+      "status": "scheduled",
+      "accessMode": "invite_only",
+      "invitedActorIds": ["actor_exp_01"],
+      "minimumTrustScore": 85,
+      "startTime": "2026-04-10T09:00:00Z",
+      "endTime": "2026-04-10T12:00:00Z"
+    }
+  ]
+}

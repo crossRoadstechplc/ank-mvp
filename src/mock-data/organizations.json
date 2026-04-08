@@ -1,0 +1,12 @@
+{
+  "organizations": [
+    { "id": "org_farm_coop_01", "name": "Biftu Highlands Cooperative", "type": "cooperative" },
+    { "id": "org_agg_01", "name": "Yirga Collection House", "type": "aggregator" },
+    { "id": "org_proc_01", "name": "Abeba Washing Station", "type": "processor" },
+    { "id": "org_exp_01", "name": "Blue Nile Export PLC", "type": "exporter" },
+    { "id": "org_imp_01", "name": "Nordic Roast GmbH", "type": "importer" },
+    { "id": "org_bank_01", "name": "Abyssinia Trade Bank", "type": "bank" },
+    { "id": "org_lab_01", "name": "Origin Cup Labs", "type": "lab" },
+    { "id": "org_admin_01", "name": "Ankuaru Platform Operations", "type": "platform_operator" }
+  ]
+}

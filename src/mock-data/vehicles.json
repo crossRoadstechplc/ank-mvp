@@ -1,0 +1,25 @@
+{
+  "vehicles": [
+    {
+      "id": "veh_001",
+      "uid": "TRK-001",
+      "plateNumber": "AA-3-45678",
+      "vehicleType": "truck",
+      "ownerActorId": "actor_agg_01",
+      "assignedDriverActorId": "actor_transport_01",
+      "capacityKg": 5000,
+      "gpsEnabled": true,
+      "status": "active"
+    }
+  ],
+  "drivers": [
+    {
+      "id": "drv_001",
+      "uid": "DRV-001",
+      "actorId": "actor_transport_01",
+      "licenseNumber": "ETH-DL-900123",
+      "phone": "+251900000008",
+      "status": "active"
+    }
+  ]
+}

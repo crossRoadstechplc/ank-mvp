@@ -1,0 +1,17 @@
+{
+  "bankApprovals": [
+    {
+      "id": "ba_001",
+      "contractId": "ctr_001",
+      "bankActorId": "actor_bank_01",
+      "buyerApprovalStatus": "approved",
+      "sellerApprovalStatus": "approved",
+      "guaranteeType": "payment_and_performance",
+      "guaranteeStatus": "issued",
+      "partialDefaultCoverage": true,
+      "approvedAmountUsd": 6596.5,
+      "decisionAt": "2026-04-07T10:00:00Z",
+      "status": "active"
+    }
+  ]
+}

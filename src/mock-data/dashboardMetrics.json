@@ -1,0 +1,143 @@
+{
+  "dashboardMetrics": {
+    "farmer_dashboard": {
+      "userId": "usr_001",
+      "summaryCards": [
+        { "label": "My Farms", "value": 1 },
+        { "label": "Open Lots", "value": 2 },
+        { "label": "Pending Validation", "value": 1 },
+        { "label": "Trust Score", "value": 82 }
+      ],
+      "charts": [
+        {
+          "type": "bar",
+          "title": "Picked Lots by Day",
+          "data": [
+            { "day": "Apr 1", "kg": 1250 },
+            { "day": "Apr 2", "kg": 700 }
+          ]
+        }
+      ]
+    },
+    "aggregator_dashboard": {
+      "userId": "usr_002",
+      "summaryCards": [
+        { "label": "Stock On Hand", "value": "2205 kg" },
+        { "label": "Pending Mismatches", "value": 1 },
+        { "label": "Validated Lots", "value": 2 },
+        { "label": "Trust Score", "value": 79 }
+      ],
+      "charts": [
+        {
+          "type": "line",
+          "title": "Intake vs Outflow",
+          "data": [
+            { "day": "Apr 1", "intake": 2205, "outflow": 0 },
+            { "day": "Apr 2", "intake": 700, "outflow": 2205 }
+          ]
+        }
+      ]
+    },
+    "processor_dashboard": {
+      "userId": "usr_003",
+      "summaryCards": [
+        { "label": "Lots in Process", "value": 2 },
+        { "label": "Parchment Output", "value": "960 kg" },
+        { "label": "Green Output", "value": "835 kg" },
+        { "label": "Avg Yield", "value": "37.9%" }
+      ],
+      "charts": [
+        {
+          "type": "pie",
+          "title": "Processing Loss Breakdown",
+          "data": [
+            { "name": "Pulp", "value": 850 },
+            { "name": "Mucilage", "value": 110 },
+            { "name": "Moisture", "value": 250 },
+            { "name": "Parchment", "value": 92 },
+            { "name": "Husk", "value": 18 }
+          ]
+        }
+      ]
+    },
+    "exporter_dashboard": {
+      "userId": "usr_004",
+      "summaryCards": [
+        { "label": "Ready Lots", "value": 1 },
+        { "label": "Reserved Lots", "value": 1 },
+        { "label": "Contracts in Review", "value": 1 },
+        { "label": "Compliance Ready", "value": "92%" }
+      ],
+      "charts": [
+        {
+          "type": "bar",
+          "title": "Lot Status",
+          "data": [
+            { "status": "Ready", "count": 1 },
+            { "status": "Reserved", "count": 1 },
+            { "status": "Quarantined", "count": 0 }
+          ]
+        }
+      ]
+    },
+    "importer_dashboard": {
+      "userId": "usr_005",
+      "summaryCards": [
+        { "label": "Open RFQs", "value": 1 },
+        { "label": "Offers Received", "value": 1 },
+        { "label": "Contracts Active", "value": 1 },
+        { "label": "Approved Suppliers", "value": 1 }
+      ],
+      "charts": [
+        {
+          "type": "funnel",
+          "title": "Procurement Funnel",
+          "data": [
+            { "stage": "RFQ", "value": 1 },
+            { "stage": "Offer", "value": 1 },
+            { "stage": "Contract", "value": 1 },
+            { "stage": "Shipment", "value": 0 }
+          ]
+        }
+      ]
+    },
+    "bank_dashboard": {
+      "userId": "usr_006",
+      "summaryCards": [
+        { "label": "Approval Queue", "value": 1 },
+        { "label": "Guarantees Issued", "value": 1 },
+        { "label": "Exposure", "value": "$6,596.50" },
+        { "label": "Defaults", "value": 0 }
+      ],
+      "charts": [
+        {
+          "type": "bar",
+          "title": "Guarantee Exposure by Contract",
+          "data": [
+            { "contract": "CTR-001", "amount": 6596.5 }
+          ]
+        }
+      ]
+    },
+    "admin_dashboard": {
+      "userId": "usr_007",
+      "summaryCards": [
+        { "label": "Users", "value": 9 },
+        { "label": "Active Lots", "value": 6 },
+        { "label": "Quarantined Lots", "value": 1 },
+        { "label": "Pending KYC", "value": 0 }
+      ],
+      "charts": [
+        {
+          "type": "line",
+          "title": "System Exceptions Over Time",
+          "data": [
+            { "day": "Apr 1", "exceptions": 0 },
+            { "day": "Apr 2", "exceptions": 1 },
+            { "day": "Apr 3", "exceptions": 1 }
+          ]
+        }
+      ]
+    }
+  }
+}

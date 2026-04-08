@@ -1,0 +1,124 @@
+{
+  "actors": [
+    {
+      "id": "actor_farmer_01",
+      "type": "individual",
+      "displayName": "Tadesse Bekele",
+      "primaryRole": "farmer",
+      "organizationId": "org_farm_coop_01",
+      "userId": "usr_001",
+      "status": "active",
+      "rating": 4.6,
+      "trustScore": 82,
+      "kycStatus": "verified"
+    },
+    {
+      "id": "actor_farmer_02",
+      "type": "individual",
+      "displayName": "Almaz Chala",
+      "primaryRole": "farmer",
+      "organizationId": "org_farm_coop_01",
+      "userId": null,
+      "status": "active",
+      "rating": 4.3,
+      "trustScore": 77,
+      "kycStatus": "verified"
+    },
+    {
+      "id": "actor_agg_01",
+      "type": "organization",
+      "displayName": "Yirga Collection House",
+      "primaryRole": "aggregator",
+      "organizationId": "org_agg_01",
+      "userId": "usr_002",
+      "status": "active",
+      "rating": 4.4,
+      "trustScore": 79,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_proc_01",
+      "type": "organization",
+      "displayName": "Abeba Washing Station",
+      "primaryRole": "processor",
+      "organizationId": "org_proc_01",
+      "userId": "usr_003",
+      "status": "active",
+      "rating": 4.5,
+      "trustScore": 84,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_exp_01",
+      "type": "organization",
+      "displayName": "Blue Nile Export PLC",
+      "primaryRole": "exporter",
+      "organizationId": "org_exp_01",
+      "userId": "usr_004",
+      "status": "active",
+      "rating": 4.7,
+      "trustScore": 88,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_imp_01",
+      "type": "organization",
+      "displayName": "Nordic Roast GmbH",
+      "primaryRole": "importer",
+      "organizationId": "org_imp_01",
+      "userId": "usr_005",
+      "status": "active",
+      "rating": 4.8,
+      "trustScore": 90,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_bank_01",
+      "type": "organization",
+      "displayName": "Abyssinia Trade Bank",
+      "primaryRole": "bank_officer",
+      "organizationId": "org_bank_01",
+      "userId": "usr_006",
+      "status": "active",
+      "rating": 4.9,
+      "trustScore": 93,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_admin_01",
+      "type": "organization",
+      "displayName": "Ankuaru Platform Operations",
+      "primaryRole": "admin",
+      "organizationId": "org_admin_01",
+      "userId": "usr_007",
+      "status": "active",
+      "rating": 5.0,
+      "trustScore": 99,
+      "kybStatus": "verified"
+    },
+    {
+      "id": "actor_transport_01",
+      "type": "individual",
+      "displayName": "Abdul Rahman",
+      "primaryRole": "transporter",
+      "organizationId": "org_agg_01",
+      "userId": "usr_008",
+      "status": "active",
+      "rating": 4.2,
+      "trustScore": 74,
+      "kycStatus": "verified"
+    },
+    {
+      "id": "actor_lab_01",
+      "type": "organization",
+      "displayName": "Origin Cup Labs",
+      "primaryRole": "lab_officer",
+      "organizationId": "org_lab_01",
+      "userId": "usr_009",
+      "status": "active",
+      "rating": 4.8,
+      "trustScore": 91,
+      "kybStatus": "verified"
+    }
+  ]
+}

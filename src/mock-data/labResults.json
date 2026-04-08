@@ -1,0 +1,18 @@
+{
+  "labResults": [
+    {
+      "id": "lab_001",
+      "lotId": "lot_005",
+      "contractId": "ctr_001",
+      "labActorId": "actor_lab_01",
+      "sampleCode": "SMP-001",
+      "moisturePercent": 10.4,
+      "screenSize": "15+",
+      "defectCount": 6,
+      "cupScore": 85.75,
+      "gradeConfirmed": "G1",
+      "status": "approved",
+      "issuedAt": "2026-04-07T14:30:00Z"
+    }
+  ]
+}

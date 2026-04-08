@@ -1,0 +1,15 @@
+{
+  "offers": [
+    {
+      "id": "offer_001",
+      "rfqId": "rfq_001",
+      "sellerActorId": "actor_exp_01",
+      "linkedLotIds": ["lot_005"],
+      "offeredQuantityKg": 835,
+      "pricePerKgUsd": 7.9,
+      "currency": "USD",
+      "status": "submitted",
+      "createdAt": "2026-04-06T12:15:00Z"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "rfqs": [
+    {
+      "id": "rfq_001",
+      "uid": "RFQ-001",
+      "buyerActorId": "actor_imp_01",
+      "title": "Ethiopian Washed Arabica G1 - 1 Container",
+      "commodity": "coffee",
+      "form": "green",
+      "targetQuantityKg": 19200,
+      "minimumGrade": "G1",
+      "originPreference": ["Sidama", "Yirgacheffe"],
+      "incoterm": "FOB Djibouti",
+      "deliveryWindowStart": "2026-05-10",
+      "deliveryWindowEnd": "2026-05-25",
+      "status": "open",
+      "participationRule": "shortlist_and_rating",
+      "minimumTrustScore": 80,
+      "invitedActorIds": ["actor_exp_01"],
+      "createdAt": "2026-04-06T09:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "contracts": [
+    {
+      "id": "ctr_001",
+      "uid": "CTR-001",
+      "rfqId": "rfq_001",
+      "offerId": "offer_001",
+      "buyerActorId": "actor_imp_01",
+      "sellerActorId": "actor_exp_01",
+      "linkedLotIds": ["lot_005"],
+      "contractType": "sale_of_goods",
+      "quantityKg": 835,
+      "pricePerKgUsd": 7.9,
+      "currency": "USD",
+      "incoterm": "FOB Djibouti",
+      "paymentTerms": "Bank guaranteed",
+      "qualityTerms": "Lab certificate required",
+      "deliveryTerms": "Within agreed shipment window",
+      "status": "bank_review",
+      "createdAt": "2026-04-06T15:20:00Z"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "roles": [
+    {
+      "id": "role_farmer",
+      "key": "farmer",
+      "name": "Farmer",
+      "dashboard": "farmer_dashboard",
+      "permissions": [
+        "view_own_profile",
+        "view_own_farms",
+        "create_pick_event",
+        "view_own_lots",
+        "view_pending_validations"
+      ]
+    },
+    {
+      "id": "role_aggregator",
+      "key": "aggregator",
+      "name": "Aggregator",
+      "dashboard": "aggregator_dashboard",
+      "permissions": [
+        "view_received_lots",
+        "validate_pick_event",
+        "aggregate_lots",
+        "disaggregate_lots",
+        "transfer_custody",
+        "view_stock",
+        "view_mismatches"
+      ]
+    },
+    {
+      "id": "role_processor",
+      "key": "processor",
+      "name": "Processor",
+      "dashboard": "processor_dashboard",
+      "permissions": [
+        "receive_lots",
+        "record_processing_event",
+        "record_losses",
+        "view_facility_inventory",
+        "view_yield_reports"
+      ]
+    },
+    {
+      "id": "role_exporter",
+      "key": "exporter",
+      "name": "Exporter",
+      "dashboard": "exporter_dashboard",
+      "permissions": [
+        "view_available_lots",
+        "reserve_lots",
+        "create_offer",
+        "create_contract_request",
+        "view_traceability",
+        "view_compliance_status"
+      ]
+    },
+    {
+      "id": "role_importer",
+      "key": "importer",
+      "name": "Importer",
+      "dashboard": "importer_dashboard",
+      "permissions": [
+        "create_rfq",
+        "view_offers",
+        "view_lot_lineage",
+        "view_contracts",
+        "view_origin_regions"
+      ]
+    },
+    {
+      "id": "role_bank_officer",
+      "key": "bank_officer",
+      "name": "Bank Officer",
+      "dashboard": "bank_dashboard",
+      "permissions": [
+        "view_approval_queue",
+        "approve_trade",
+        "decline_trade",
+        "issue_guarantee",
+        "view_exposure"
+      ]
+    },
+    {
+      "id": "role_admin",
+      "key": "admin",
+      "name": "Admin",
+      "dashboard": "admin_dashboard",
+      "permissions": [
+        "manage_users",
+        "manage_roles",
+        "manage_master_data",
+        "view_all_quarantined_lots",
+        "view_system_metrics",
+        "decode_lot_code"
+      ]
+    },
+    {
+      "id": "role_transporter",
+      "key": "transporter",
+      "name": "Transporter",
+      "dashboard": "transporter_dashboard",
+      "permissions": [
+        "view_assigned_shipments",
+        "accept_custody",
+        "handover_custody",
+        "update_trip_status"
+      ]
+    },
+    {
+      "id": "role_lab_officer",
+      "key": "lab_officer",
+      "name": "Lab Officer",
+      "dashboard": "lab_dashboard",
+      "permissions": [
+        "view_samples",
+        "record_lab_results",
+        "issue_quality_report"
+      ]
+    }
+  ]
+}

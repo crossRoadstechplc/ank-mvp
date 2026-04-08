@@ -1,0 +1,43 @@
+{
+  "facilities": [
+    {
+      "id": "fac_agg_01",
+      "uid": "FAC-AGG-001",
+      "name": "Yirga Collection Yard",
+      "facilityType": "aggregation_center",
+      "ownerActorId": "actor_agg_01",
+      "operatorActorId": "actor_agg_01",
+      "organizationId": "org_agg_01",
+      "region": "Sidama",
+      "woreda": "Aleta Wondo",
+      "coordinates": { "lat": 6.6401, "lng": 38.5012 },
+      "status": "active"
+    },
+    {
+      "id": "fac_proc_01",
+      "uid": "FAC-PROC-001",
+      "name": "Abeba Washing Station",
+      "facilityType": "washing_station",
+      "ownerActorId": "actor_proc_01",
+      "operatorActorId": "actor_proc_01",
+      "organizationId": "org_proc_01",
+      "region": "Sidama",
+      "woreda": "Aleta Wondo",
+      "coordinates": { "lat": 6.6582, "lng": 38.5198 },
+      "status": "active"
+    },
+    {
+      "id": "fac_wh_01",
+      "uid": "FAC-WH-001",
+      "name": "Blue Nile Export Warehouse",
+      "facilityType": "export_warehouse",
+      "ownerActorId": "actor_exp_01",
+      "operatorActorId": "actor_exp_01",
+      "organizationId": "org_exp_01",
+      "region": "Addis Ababa",
+      "woreda": "Akaky Kaliti",
+      "coordinates": { "lat": 8.8937, "lng": 38.7896 },
+      "status": "active"
+    }
+  ]
+}

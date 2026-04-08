@@ -1,0 +1,58 @@
+{
+  "farms": [
+    {
+      "id": "farm_001",
+      "uid": "FARM-YRG-001",
+      "name": "Chelchele Plot A",
+      "ownerActorId": "actor_farmer_01",
+      "managerActorId": "actor_farmer_01",
+      "organizationId": "org_farm_coop_01",
+      "region": "Sidama",
+      "zone": "Aleta Wondo",
+      "woreda": "Aleta Wondo",
+      "kebele": "Chelchele",
+      "country": "Ethiopia",
+      "elevationM": 1980,
+      "sizeHectares": 1.4,
+      "coffeeVarieties": ["74110", "74112"],
+      "farmingType": "smallholder",
+      "coordinates": { "lat": 6.6241, "lng": 38.4729 },
+      "polygon": [
+        [38.4721, 6.6248],
+        [38.4730, 6.6251],
+        [38.4734, 6.6243],
+        [38.4727, 6.6238],
+        [38.4721, 6.6248]
+      ],
+      "eudrStatus": "ready",
+      "status": "active"
+    },
+    {
+      "id": "farm_002",
+      "uid": "FARM-YRG-002",
+      "name": "Konga Slope East",
+      "ownerActorId": "actor_farmer_02",
+      "managerActorId": "actor_farmer_02",
+      "organizationId": "org_farm_coop_01",
+      "region": "Sidama",
+      "zone": "Aleta Wondo",
+      "woreda": "Aleta Wondo",
+      "kebele": "Konga",
+      "country": "Ethiopia",
+      "elevationM": 2015,
+      "sizeHectares": 1.1,
+      "coffeeVarieties": ["Heirloom"],
+      "farmingType": "smallholder",
+      "coordinates": { "lat": 6.6328, "lng": 38.4894 },
+      "polygon": [
+        [38.4888, 6.6331],
+        [38.4898, 6.6334],
+        [38.4901, 6.6327],
+        [38.4892, 6.6323],
+        [38.4888, 6.6331]
+      ],
+      "eudrStatus": "ready",
+      "status": "active"
+    }
+  ]
+}

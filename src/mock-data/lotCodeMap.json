@@ -1,0 +1,34 @@
+{
+  "lotCodeMap": [
+    {
+      "publicLotCode": "ETH-A91F-C47B-22D8-001",
+      "lotId": "lot_001",
+      "traceKey": "TRC-001-INT"
+    },
+    {
+      "publicLotCode": "ETH-B72D-19AF-88C4-002",
+      "lotId": "lot_002",
+      "traceKey": "TRC-002-INT"
+    },
+    {
+      "publicLotCode": "ETH-3F2A-9C7D-18B3-003",
+      "lotId": "lot_003",
+      "traceKey": "TRC-003-INT"
+    },
+    {
+      "publicLotCode": "ETH-7A3F-91C2-B84D-004",
+      "lotId": "lot_004",
+      "traceKey": "TRC-004-INT"
+    },
+    {
+      "publicLotCode": "ETH-4F2A-9C7D-18B3-005",
+      "lotId": "lot_005",
+      "traceKey": "TRC-005-INT"
+    },
+    {
+      "publicLotCode": "ETH-0D8E-5B71-CC44-006",
+      "lotId": "lot_006",
+      "traceKey": "TRC-006-INT"
+    }
+  ]
+}
