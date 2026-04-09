@@ -1896,6 +1896,86 @@ export function RootScreenController({
 
   if (currentState === "dashboard") {
     const hero = primaryRole ? roleHero[primaryRole] : null;
+    if (primaryRole === "admin") {
+      return (
+        <div className="mx-auto mt-6 w-full max-w-6xl space-y-4">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h1 className="text-lg font-semibold text-zinc-900">{hero?.title ?? "Admin Workspace"}</h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Use the sidebar for admin tools. This replaces expandable action panels for long-term scalability.
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">Signed in as {userId}</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+            <aside className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Admin Navigation</p>
+              <Button type="button" className="w-full" onClick={() => goToState("admin_role_monitor")}>
+                Role Monitor
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => goToState("admin_data_hub")}
+              >
+                Data Management
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => goToState("admin_decoder")}
+              >
+                Lot Code Decoder
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => {
+                  const flagged =
+                    data?.lots.find((l) => l.status === "quarantined" || l.integrityStatus === "compromised") ??
+                    data?.lots[0];
+                  if (flagged) openLotDetail(flagged.id);
+                  else goToState("lot_detail");
+                }}
+              >
+                Review Exceptions
+              </Button>
+            </aside>
+
+            <section className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {kpiCards.map((card) => (
+                  <div key={card.label} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                    <p className="text-xs text-zinc-500">{card.label}</p>
+                    <p className="mt-2 text-xl font-semibold text-zinc-900">{String(card.value)}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-zinc-900">{chartSpec?.title ?? "Chart"}</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Legend and axis labels describe each series. KPI cards above reflect live persisted state; chart tiles may
+                  use seed trend shapes for layout reference.
+                </p>
+                <div className="mt-3 h-64 sm:h-72">{chartSpec ? <RoleChart chart={chartSpec} /> : null}</div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-zinc-900">{hero?.activityTitle ?? "Recent Activity"}</p>
+                <div className="mt-3 space-y-1">
+                  {recentActivity.slice(0, 8).map((line) => (
+                    <p key={line} className="text-sm text-zinc-600">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="mx-auto mt-6 w-full max-w-5xl space-y-4">
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -1922,13 +2002,6 @@ export function RootScreenController({
             {chartSpec ? <RoleChart chart={chartSpec} /> : null}
           </div>
         </div>
-
-        {primaryRole === "admin" ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-zinc-900">Lot Code Decoder</p>
-            <p className="mt-1 text-sm text-zinc-600">Admin-only decoding of opaque public lot codes.</p>
-          </div>
-        ) : null}
 
         <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
@@ -1979,21 +2052,6 @@ export function RootScreenController({
           </details>
         ) : null}
 
-        {primaryRole === "admin" ? (
-          <div className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <Button type="button" className="w-full" onClick={() => goToState("admin_data_hub")}>
-              Open data management
-            </Button>
-            <Button
-              type="button"
-              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
-              onClick={() => goToState("admin_role_monitor")}
-            >
-              Open Role Monitor
-            </Button>
-          </div>
-        ) : null}
-
         {primaryRole === "importer" && permissions.includes("view_lot_lineage") ? (
           <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Traceability</summary>
@@ -2039,9 +2097,7 @@ export function RootScreenController({
             type="button"
             className="w-full"
             onClick={() => {
-              if (primaryRole === "admin") {
-                goToState("admin_decoder");
-              } else if (primaryRole === "lab_officer") {
+              if (primaryRole === "lab_officer") {
                 goToState("lab_queue");
               } else if (primaryRole === "importer" || primaryRole === "bank_officer") {
                 startTradeFlow();

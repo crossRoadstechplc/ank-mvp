@@ -17,8 +17,11 @@ export function DevReadinessPanel() {
   const exportLiveDataSnapshot = useAppStore((s) => s.exportLiveDataSnapshot);
   const clearLocalState = useAppStore((s) => s.clearLocalState);
   const isDev = process.env.NODE_ENV === "development";
+  const isRoleMonitorScreen = currentState === "admin_role_monitor";
+  const isMonitorPreviewRoute =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/monitor-preview");
 
-  if (!isDev) return null;
+  if (!isDev || isRoleMonitorScreen || isMonitorPreviewRoute) return null;
 
   return (
     <aside className="fixed bottom-3 right-3 z-50 w-72 rounded-xl border border-zinc-300 bg-white/95 p-3 text-xs shadow-lg backdrop-blur">

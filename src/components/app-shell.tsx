@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <StageHeader />
       <DevReadinessPanel />
-      <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-20 sm:px-6">{children}</main>
+      <main className="w-full px-4 pb-24 pt-20 sm:px-6">{children}</main>
     </div>
   );
 }
