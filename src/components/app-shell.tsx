@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { DevReadinessPanel } from "@/components/dev-readiness-panel";
 import { StageHeader } from "@/components/stage-header";
@@ -37,17 +37,37 @@ export function EmptyState({
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  suppressDevReadinessPanel = false,
+}: {
+  children: ReactNode;
+  suppressDevReadinessPanel?: boolean;
+}) {
   const loadAllMockData = useAppStore((s) => s.loadAllMockData);
+  const hydrateLiveData = useAppStore((s) => s.hydrateLiveData);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     loadAllMockData();
   }, [loadAllMockData]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const id = window.setInterval(() => {
+      hydrateLiveData();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [mounted, hydrateLiveData]);
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <StageHeader />
-      <DevReadinessPanel />
+      {mounted && !suppressDevReadinessPanel ? <DevReadinessPanel /> : null}
       <main className="w-full px-4 pb-24 pt-20 sm:px-6">{children}</main>
     </div>
   );

@@ -109,7 +109,12 @@ export interface DataSlice {
   archiveFarmField: (farmId: string) => { ok: boolean; message: string };
   validatePendingLot: (lotId: string, confirmedWeightKg: number) => { ok: boolean; message: string };
   receiveLotAsAggregator: (lotId: string, notes?: string) => { ok: boolean; message: string };
-  createAggregatedLot: (parentLotIds: string[], weightKg: number, notes?: string) => {
+  createAggregatedLot: (
+    parentLotIds: string[],
+    weightKg: number,
+    notes?: string,
+    opts?: { handoverToProcessor?: boolean; processorActorId?: string | null },
+  ) => {
     ok: boolean;
     message: string;
     lotId?: string;
@@ -819,11 +824,11 @@ export const useAppStore = create<AppStore>()(
           return { ok: true, message: "Receive recorded." };
         },
 
-        createAggregatedLot: (parentLotIds, weightKg, notes) => {
+        createAggregatedLot: (parentLotIds, weightKg, notes, opts) => {
           if (!hasPermission(get, "aggregate_lots")) {
             return { ok: false, message: "Not permitted to aggregate." };
           }
-          if (parentLotIds.length < 2) return { ok: false, message: "Select at least two lots." };
+          if (parentLotIds.length < 1) return { ok: false, message: "Select at least one lot." };
           if (weightKg <= 0) return { ok: false, message: "Weight must be positive." };
           const data = get().data;
           const userId = get().userId;
@@ -833,6 +838,11 @@ export const useAppStore = create<AppStore>()(
           const parents = parentLotIds.map((id) => data.lots.find((l) => l.id === id));
           if (parents.some((p) => !p)) return { ok: false, message: "Unknown parent lot." };
           const now = isoNow();
+          const selectedProcessorActorId =
+            opts?.processorActorId ??
+            data.actors.find((a) => a.primaryRole === "processor")?.id ??
+            null;
+          const handoverToProcessor = Boolean(opts?.handoverToProcessor && selectedProcessorActorId);
           let newLotId = "";
           patchLive((live) => {
             const lotId = nextPrefixedId("lot", live.lots.map((l) => l.id));
@@ -851,7 +861,9 @@ export const useAppStore = create<AppStore>()(
               farmId: null,
               originActorId: user.linkedActorId,
               currentOwnerActorId: user.linkedActorId,
-              currentCustodianActorId: user.linkedActorId,
+              currentCustodianActorId: handoverToProcessor
+                ? (selectedProcessorActorId as string)
+                : user.linkedActorId,
               facilityId: live.facilities[0]?.id ?? null,
               weightKg,
               status: "in_stock",
@@ -894,10 +906,33 @@ export const useAppStore = create<AppStore>()(
               createdAt: now,
               updatedAt: now,
             };
+            const transferEvent =
+              handoverToProcessor && selectedProcessorActorId
+                ? ({
+                    id: nextPrefixedId("evt", [...live.inventoryEvents, ev].map((e) => e.id)),
+                    type: "TRANSFER_CUSTODY",
+                    timestamp: now,
+                    lotId,
+                    actorId: user.linkedActorId,
+                    fromActorId: user.linkedActorId,
+                    toActorId: selectedProcessorActorId,
+                    weightKg,
+                    status: "recorded",
+                    verificationStatus: "verified",
+                    notes: "Handover aggregate to processor intake",
+                    createdBy: userId,
+                    updatedBy: userId,
+                    createdAt: now,
+                    updatedAt: now,
+                  } as InventoryEvent)
+                : null;
+
             return {
               ...live,
               lots: nextLots,
-              inventoryEvents: createEntity(live.inventoryEvents, ev),
+              inventoryEvents: transferEvent
+                ? createEntity(createEntity(live.inventoryEvents, ev), transferEvent)
+                : createEntity(live.inventoryEvents, ev),
               lotCodeMap: [...live.lotCodeMap, { publicLotCode, lotId, traceKey }],
             };
           });

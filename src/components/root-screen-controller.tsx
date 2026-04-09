@@ -75,10 +75,12 @@ function toKg(value: number, unit: MassUnit): number {
 export function RootScreenController({
   monitorPreview = false,
   previewEmailPrefill = "",
+  previewPasswordPrefill = "",
   previewAutoLogin = false,
 }: {
   monitorPreview?: boolean;
   previewEmailPrefill?: string;
+  previewPasswordPrefill?: string;
   previewAutoLogin?: boolean;
 }) {
   const currentState = useAppStore((s) => s.currentState);
@@ -220,6 +222,12 @@ export function RootScreenController({
   }, [monitorPreview, previewEmailPrefill, currentState]);
 
   useEffect(() => {
+    if (!monitorPreview || !previewPasswordPrefill) return;
+    if (currentState !== "auth_login") return;
+    setPassword(previewPasswordPrefill);
+  }, [monitorPreview, previewPasswordPrefill, currentState]);
+
+  useEffect(() => {
     previewAutoLoginAttempted.current = false;
   }, [previewEmailPrefill, monitorAutoLogin]);
 
@@ -254,6 +262,8 @@ export function RootScreenController({
   const [aggSelectedParentIds, setAggSelectedParentIds] = useState<string[]>([]);
   const [aggWeight, setAggWeight] = useState("");
   const [aggWeightUnit, setAggWeightUnit] = useState<MassUnit>("kg");
+  const [aggSendToProcessor, setAggSendToProcessor] = useState(true);
+  const [aggProcessorActorId, setAggProcessorActorId] = useState("");
   const [processorLotPick, setProcessorLotPick] = useState("");
   const [transporterLotPick, setTransporterLotPick] = useState("");
   const [reservationLabel, setReservationLabel] = useState("");
@@ -530,6 +540,10 @@ export function RootScreenController({
     if (!data || !linkedActorId) return [];
     return data.lots.filter((l) => isLabIntakeLot(l, linkedActorId));
   }, [data, linkedActorId]);
+  const processorActors = useMemo(() => {
+    if (!data) return [];
+    return data.actors.filter((a) => a.primaryRole === "processor");
+  }, [data]);
 
   const exporterOfferLotCandidates = useMemo(() => {
     if (!data) return [];
@@ -609,6 +623,116 @@ export function RootScreenController({
         .map((lot) => `Exception: ${lot.publicLotCode} quarantined`);
     }
     return [];
+  }, [data, linkedActorId, primaryRole]);
+
+  const latestRoleActivity = useMemo(() => {
+    if (!data || !primaryRole || !linkedActorId) {
+      return { title: "Latest Activity", lines: [] as string[] };
+    }
+
+    const take = (rows: string[]) => rows.slice(0, 5);
+
+    if (primaryRole === "farmer") {
+      const mine = data.lots
+        .filter((l) => l.originActorId === linkedActorId)
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest pick lots",
+        lines: take(mine.map((l) => `${l.id} · ${l.publicLotCode} · ${l.status}`)),
+      };
+    }
+
+    if (primaryRole === "aggregator") {
+      const mine = data.lots
+        .filter((l) => l.originActorId === linkedActorId && l.sourceType === "aggregated")
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest aggregates",
+        lines: take(mine.map((l) => `${l.id} · ${l.publicLotCode} · ${l.weightKg} kg`)),
+      };
+    }
+
+    if (primaryRole === "processor") {
+      const mine = data.lots
+        .filter((l) => l.originActorId === linkedActorId && l.sourceType === "processed")
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest processed outputs",
+        lines: take(mine.map((l) => `${l.id} · ${l.publicLotCode} · ${l.status}`)),
+      };
+    }
+
+    if (primaryRole === "transporter") {
+      const mine = data.inventoryEvents
+        .filter(
+          (e) =>
+            e.actorId === linkedActorId &&
+            (e.type === "TRANSFER_CUSTODY" || e.type === "HANDOVER_TO_LAB"),
+        )
+        .sort((a, b) => (b.timestamp ?? "").localeCompare(a.timestamp ?? ""));
+      return {
+        title: "Latest custody transitions",
+        lines: take(mine.map((e) => `${e.id} · ${e.type} · lot ${e.lotId}`)),
+      };
+    }
+
+    if (primaryRole === "lab_officer") {
+      const mine = data.labResults
+        .filter((r) => r.labActorId === linkedActorId)
+        .sort((a, b) => (b.issuedAt ?? "").localeCompare(a.issuedAt ?? ""));
+      return {
+        title: "Latest lab results",
+        lines: take(mine.map((r) => `${r.id} · lot ${r.lotId} · ${r.status}`)),
+      };
+    }
+
+    if (primaryRole === "exporter") {
+      const mine = data.offers
+        .filter((o) => o.sellerActorId === linkedActorId)
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest offers",
+        lines: take(mine.map((o) => `${o.id} · RFQ ${o.rfqId} · ${o.status}`)),
+      };
+    }
+
+    if (primaryRole === "importer") {
+      const mine = data.rfqs
+        .filter((r) => r.buyerActorId === linkedActorId)
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest RFQs",
+        lines: take(mine.map((r) => `${r.id} · ${r.title} · ${r.status}`)),
+      };
+    }
+
+    if (primaryRole === "bank_officer") {
+      const mine = data.bankApprovals
+        .filter((b) => b.bankActorId === linkedActorId)
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return {
+        title: "Latest approvals",
+        lines: take(mine.map((b) => `${b.id} · contract ${b.contractId} · ${b.status}`)),
+      };
+    }
+
+    if (primaryRole === "admin") {
+      const lots = data.lots
+        .filter((l) => l.status === "quarantined" || l.integrityStatus === "compromised")
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      const events = data.inventoryEvents
+        .slice()
+        .sort((a, b) => (b.timestamp ?? "").localeCompare(a.timestamp ?? ""));
+      return {
+        title: "Latest system activity",
+        lines: take([
+          ...lots.map((l) => `${l.id} · ${l.publicLotCode} · ${l.status}/${l.integrityStatus}`),
+          ...events.map((e) => `${e.id} · ${e.type} · lot ${e.lotId}`),
+        ]),
+      };
+    }
+
+    return { title: "Latest Activity", lines: [] as string[] };
   }, [data, linkedActorId, primaryRole]);
 
   const chartSpec = useMemo(() => {
@@ -882,6 +1006,16 @@ export function RootScreenController({
       prev && aggregatorReceiveCandidates.some((l) => l.id === prev) ? prev : aggregatorReceiveCandidates[0].id,
     );
   }, [aggregatorReceiveCandidates]);
+
+  useEffect(() => {
+    if (!processorActors.length) {
+      setAggProcessorActorId("");
+      return;
+    }
+    setAggProcessorActorId((prev) =>
+      prev && processorActors.some((a) => a.id === prev) ? prev : processorActors[0]!.id,
+    );
+  }, [processorActors]);
 
   if (currentState === "loading") {
     return <ScreenCard title="Loading" description="Initializing app engine and local mock data." />;
@@ -1783,7 +1917,7 @@ export function RootScreenController({
       <div className="mx-auto mt-10 w-full max-w-xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-zinc-900">Aggregate lots</h1>
         <p className="text-sm text-zinc-600">
-          Select at least two lots already in your custody. Parent links are stored on the new aggregate lot.
+          Select one or more lots already in your custody. Parent links are stored on the new aggregate lot.
         </p>
         <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3">
           {aggregatorAggregateCandidates.length ? (
@@ -1823,16 +1957,46 @@ export function RootScreenController({
             <option value="lb">lb</option>
           </select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={aggSendToProcessor}
+            onChange={(e) => setAggSendToProcessor(e.target.checked)}
+          />
+          Hand over aggregate to processor intake now
+        </label>
+        {aggSendToProcessor ? (
+          <select
+            value={aggProcessorActorId}
+            onChange={(e) => setAggProcessorActorId(e.target.value)}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          >
+            {processorActors.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.displayName} ({a.id})
+              </option>
+            ))}
+          </select>
+        ) : null}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <Button
           type="button"
           className="w-full"
           onClick={() => {
-            const r = createAggregatedLot(aggSelectedParentIds, toKg(Number(aggWeight), aggWeightUnit));
+            const r = createAggregatedLot(
+              aggSelectedParentIds,
+              toKg(Number(aggWeight), aggWeightUnit),
+              undefined,
+              {
+                handoverToProcessor: aggSendToProcessor,
+                processorActorId: aggSendToProcessor ? aggProcessorActorId || null : null,
+              },
+            );
             if (!r.ok) setError(r.message);
             else {
               setError(null);
               setAggSelectedParentIds([]);
+              setAggSendToProcessor(true);
               goToState("dashboard");
             }
           }}
@@ -1932,7 +2096,7 @@ export function RootScreenController({
     const previewUrl = selectedMonitorUser
       ? `/monitor-preview?ns=${encodeURIComponent(previewNamespace)}&email=${encodeURIComponent(
           selectedMonitorUser.email,
-        )}&role=${encodeURIComponent(selectedMonitorUser.primaryRole)}&userId=${encodeURIComponent(
+        )}&password=${encodeURIComponent(selectedMonitorUser.password)}&role=${encodeURIComponent(selectedMonitorUser.primaryRole)}&userId=${encodeURIComponent(
           selectedMonitorUser.id,
         )}&autoLogin=${monitorAutoLogin ? "1" : "0"}`
       : `/monitor-preview?ns=${encodeURIComponent(previewNamespace)}`;
@@ -2109,6 +2273,21 @@ export function RootScreenController({
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-zinc-900">{latestRoleActivity.title}</p>
+                <div className="mt-2 space-y-1">
+                  {latestRoleActivity.lines.length ? (
+                    latestRoleActivity.lines.map((line) => (
+                      <p key={line} className="text-sm text-zinc-600">
+                        {line}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-zinc-500">No recent records yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-semibold text-zinc-900">{chartSpec?.title ?? "Chart"}</p>
                 <p className="mt-1 text-xs text-zinc-500">
                   Legend and axis labels describe each live runtime series from lots, events, and trade records.
@@ -2145,6 +2324,21 @@ export function RootScreenController({
               <p className="mt-2 text-xl font-semibold text-zinc-900">{String(card.value)}</p>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold text-zinc-900">{latestRoleActivity.title}</p>
+          <div className="mt-2 space-y-1">
+            {latestRoleActivity.lines.length ? (
+              latestRoleActivity.lines.map((line) => (
+                <p key={line} className="text-sm text-zinc-600">
+                  {line}
+                </p>
+              ))
+            ) : (
+              <p className="text-sm text-zinc-500">No recent records yet.</p>
+            )}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">

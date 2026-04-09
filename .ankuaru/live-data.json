@@ -496,14 +496,16 @@
         "currentCustodianActorId": "actor_farmer_01",
         "facilityId": null,
         "weightKg": 1250,
-        "status": "pending_validation",
+        "status": "in_stock",
         "qualityGrade": null,
         "parentLotIds": [],
         "childLotIds": [],
         "harvestDate": "2026-04-01T08:15:00Z",
         "createdAt": "2026-04-01T08:15:00Z",
         "geoInherited": true,
-        "integrityStatus": "provisional"
+        "integrityStatus": "verified",
+        "updatedAt": "2026-04-09T10:47:48.271Z",
+        "updatedBy": "usr_002"
       },
       {
         "id": "lot_002",
@@ -519,14 +521,16 @@
         "currentCustodianActorId": "actor_farmer_02",
         "facilityId": null,
         "weightKg": 980,
-        "status": "pending_validation",
+        "status": "in_stock",
         "qualityGrade": null,
         "parentLotIds": [],
         "childLotIds": [],
         "harvestDate": "2026-04-01T09:05:00Z",
         "createdAt": "2026-04-01T09:05:00Z",
         "geoInherited": true,
-        "integrityStatus": "provisional"
+        "integrityStatus": "verified",
+        "updatedAt": "2026-04-09T10:47:42.693Z",
+        "updatedBy": "usr_002"
       },
       {
         "id": "lot_003",
@@ -542,19 +546,22 @@
         "currentCustodianActorId": "actor_proc_01",
         "facilityId": "fac_proc_01",
         "weightKg": 2205,
-        "status": "in_stock",
+        "status": "consumed",
         "qualityGrade": null,
         "parentLotIds": [
           "lot_001",
           "lot_002"
         ],
         "childLotIds": [
-          "lot_004"
+          "lot_004",
+          "lot_009"
         ],
         "harvestDate": "2026-04-01T12:30:00Z",
         "createdAt": "2026-04-01T12:30:00Z",
         "geoInherited": true,
-        "integrityStatus": "verified"
+        "integrityStatus": "verified",
+        "updatedAt": "2026-04-09T10:41:54.284Z",
+        "updatedBy": "usr_003"
       },
       {
         "id": "lot_004",
@@ -632,6 +639,154 @@
         "createdAt": "2026-04-02T08:40:00Z",
         "geoInherited": true,
         "integrityStatus": "compromised"
+      },
+      {
+        "id": "lot_007",
+        "internalUuid": "f613bf97-2813-409a-879e-62f1ce3c887c",
+        "publicLotCode": "ETH-569B-28B0-B53A",
+        "traceKey": "TRC-5DA6-2465",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "farm_pick",
+        "farmId": "farm_001",
+        "originActorId": "actor_farmer_01",
+        "currentOwnerActorId": "actor_farmer_01",
+        "currentCustodianActorId": "actor_agg_01",
+        "facilityId": null,
+        "weightKg": 1231,
+        "status": "in_stock",
+        "qualityGrade": null,
+        "parentLotIds": [],
+        "childLotIds": [
+          "lot_008",
+          "lot_010"
+        ],
+        "harvestDate": "2026-04-09T10:34:16.734Z",
+        "createdAt": "2026-04-09T10:34:16.734Z",
+        "geoInherited": true,
+        "integrityStatus": "verified",
+        "createdBy": "usr_001",
+        "updatedBy": "usr_002",
+        "updatedAt": "2026-04-09T10:48:35.490Z"
+      },
+      {
+        "id": "lot_008",
+        "internalUuid": "92a6374e-0f28-48e7-8735-b3068f396ba1",
+        "publicLotCode": "ETH-D7F4-5F16-F454",
+        "traceKey": "TRC-AB18-DD2C",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "aggregated",
+        "farmId": null,
+        "originActorId": "actor_agg_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "weightKg": 1231,
+        "status": "in_stock",
+        "qualityGrade": null,
+        "parentLotIds": [
+          "lot_007"
+        ],
+        "childLotIds": [
+          "lot_010"
+        ],
+        "harvestDate": "2026-04-09T10:36:24.528Z",
+        "createdAt": "2026-04-09T10:36:24.528Z",
+        "geoInherited": true,
+        "integrityStatus": "verified",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "updatedAt": "2026-04-09T10:48:35.490Z"
+      },
+      {
+        "id": "lot_009",
+        "internalUuid": "b62ac1d8-0d74-4ec5-9907-7ac30eedc9c9",
+        "publicLotCode": "ETH-3CB1-35AC-2FE9",
+        "traceKey": "TRC-02ED-A65C",
+        "commodity": "coffee",
+        "form": "parchment",
+        "sourceType": "processed",
+        "farmId": null,
+        "originActorId": "actor_proc_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "weightKg": 2205,
+        "status": "awaiting_transport",
+        "labStatus": "pending_transport",
+        "qualityGrade": null,
+        "parentLotIds": [
+          "lot_003"
+        ],
+        "childLotIds": [],
+        "harvestDate": "2026-04-01T12:30:00Z",
+        "createdAt": "2026-04-09T10:41:54.284Z",
+        "geoInherited": true,
+        "integrityStatus": "verified",
+        "createdBy": "usr_003",
+        "updatedBy": "usr_003",
+        "updatedAt": "2026-04-09T10:41:54.284Z"
+      },
+      {
+        "id": "lot_010",
+        "internalUuid": "7d5efb9a-868b-4187-ad0b-56728940cf79",
+        "publicLotCode": "ETH-0249-0BDB-384F",
+        "traceKey": "TRC-5B99-8DD3",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "aggregated",
+        "farmId": null,
+        "originActorId": "actor_agg_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_proc_01",
+        "facilityId": "fac_agg_01",
+        "weightKg": 3462,
+        "status": "consumed",
+        "qualityGrade": null,
+        "parentLotIds": [
+          "lot_007",
+          "lot_008"
+        ],
+        "childLotIds": [
+          "lot_011"
+        ],
+        "harvestDate": "2026-04-09T10:48:35.490Z",
+        "createdAt": "2026-04-09T10:48:35.490Z",
+        "geoInherited": true,
+        "integrityStatus": "verified",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_003",
+        "updatedAt": "2026-04-09T10:49:35.013Z"
+      },
+      {
+        "id": "lot_011",
+        "internalUuid": "88dd3b69-f9a9-4a50-a2a1-609d1e7818b8",
+        "publicLotCode": "ETH-E05D-A080-7299",
+        "traceKey": "TRC-5EEF-9CD9",
+        "commodity": "coffee",
+        "form": "parchment",
+        "sourceType": "processed",
+        "farmId": null,
+        "originActorId": "actor_proc_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_transport_01",
+        "facilityId": "fac_agg_01",
+        "weightKg": 3400,
+        "status": "in_transit",
+        "labStatus": "pending_transport",
+        "qualityGrade": null,
+        "parentLotIds": [
+          "lot_010"
+        ],
+        "childLotIds": [],
+        "harvestDate": "2026-04-09T10:48:35.490Z",
+        "createdAt": "2026-04-09T10:49:35.013Z",
+        "geoInherited": true,
+        "integrityStatus": "verified",
+        "createdBy": "usr_003",
+        "updatedBy": "usr_008",
+        "updatedAt": "2026-04-09T10:51:11.752Z"
       }
     ],
     "inventoryEvents": [
@@ -879,6 +1034,237 @@
         "status": "recorded",
         "verificationStatus": "verified",
         "notes": "Lot quarantined due to missing validation event"
+      },
+      {
+        "id": "evt_015",
+        "type": "PICK",
+        "timestamp": "2026-04-09T10:34:16.734Z",
+        "lotId": "lot_007",
+        "actorId": "actor_farmer_01",
+        "fromActorId": null,
+        "toActorId": "actor_farmer_01",
+        "facilityId": null,
+        "weightKg": 1231,
+        "status": "recorded",
+        "verificationStatus": "provisional",
+        "notes": "Pick recorded",
+        "createdBy": "usr_001",
+        "updatedBy": "usr_001",
+        "createdAt": "2026-04-09T10:34:16.734Z",
+        "updatedAt": "2026-04-09T10:34:16.734Z"
+      },
+      {
+        "id": "evt_016",
+        "type": "VALIDATE_PICK",
+        "timestamp": "2026-04-09T10:34:47.733Z",
+        "lotId": "lot_007",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_01",
+        "toActorId": "actor_agg_01",
+        "reportedWeightKg": 1231,
+        "confirmedWeightKg": 1231,
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Validated pick",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:34:47.733Z",
+        "updatedAt": "2026-04-09T10:34:47.733Z"
+      },
+      {
+        "id": "evt_017",
+        "type": "RECEIVE",
+        "timestamp": "2026-04-09T10:35:01.590Z",
+        "lotId": "lot_007",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_01",
+        "toActorId": "actor_agg_01",
+        "weightKg": 1231,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Received at aggregator",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:35:01.590Z",
+        "updatedAt": "2026-04-09T10:35:01.590Z"
+      },
+      {
+        "id": "evt_018",
+        "type": "AGGREGATE",
+        "timestamp": "2026-04-09T10:36:24.528Z",
+        "lotId": "lot_008",
+        "actorId": "actor_agg_01",
+        "parentLotIds": [
+          "lot_007"
+        ],
+        "inputWeightKg": 1231,
+        "outputWeightKg": 1231,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Aggregated intake",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:36:24.528Z",
+        "updatedAt": "2026-04-09T10:36:24.528Z"
+      },
+      {
+        "id": "evt_019",
+        "type": "PROCESS_PULP_AND_WASH",
+        "timestamp": "2026-04-09T10:41:54.284Z",
+        "lotId": "lot_003",
+        "parentLotIds": [
+          "lot_001",
+          "lot_002"
+        ],
+        "outputLotIds": [
+          "lot_009"
+        ],
+        "actorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "inputWeightKg": 2205,
+        "outputWeightKg": 2205,
+        "losses": [
+          {
+            "type": "pulp",
+            "weightKg": 100
+          },
+          {
+            "type": "mucilage",
+            "weightKg": 1
+          }
+        ],
+        "varianceKg": -101,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Processed with typed losses",
+        "createdBy": "usr_003",
+        "updatedBy": "usr_003",
+        "createdAt": "2026-04-09T10:41:54.284Z",
+        "updatedAt": "2026-04-09T10:41:54.284Z"
+      },
+      {
+        "id": "evt_020",
+        "type": "VALIDATE_PICK",
+        "timestamp": "2026-04-09T10:47:42.693Z",
+        "lotId": "lot_002",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_02",
+        "toActorId": "actor_agg_01",
+        "reportedWeightKg": 980,
+        "confirmedWeightKg": 980,
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Validated pick",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:47:42.693Z",
+        "updatedAt": "2026-04-09T10:47:42.693Z"
+      },
+      {
+        "id": "evt_021",
+        "type": "VALIDATE_PICK",
+        "timestamp": "2026-04-09T10:47:48.271Z",
+        "lotId": "lot_001",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_01",
+        "toActorId": "actor_agg_01",
+        "reportedWeightKg": 1250,
+        "confirmedWeightKg": 1250,
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Validated pick",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:47:48.271Z",
+        "updatedAt": "2026-04-09T10:47:48.271Z"
+      },
+      {
+        "id": "evt_022",
+        "type": "AGGREGATE",
+        "timestamp": "2026-04-09T10:48:35.490Z",
+        "lotId": "lot_010",
+        "actorId": "actor_agg_01",
+        "parentLotIds": [
+          "lot_007",
+          "lot_008"
+        ],
+        "inputWeightKg": 2462,
+        "outputWeightKg": 3462,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Aggregated intake",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:48:35.490Z",
+        "updatedAt": "2026-04-09T10:48:35.490Z"
+      },
+      {
+        "id": "evt_023",
+        "type": "TRANSFER_CUSTODY",
+        "timestamp": "2026-04-09T10:48:35.490Z",
+        "lotId": "lot_010",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_agg_01",
+        "toActorId": "actor_proc_01",
+        "weightKg": 3462,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Handover aggregate to processor intake",
+        "createdBy": "usr_002",
+        "updatedBy": "usr_002",
+        "createdAt": "2026-04-09T10:48:35.490Z",
+        "updatedAt": "2026-04-09T10:48:35.490Z"
+      },
+      {
+        "id": "evt_024",
+        "type": "PROCESS_PULP_AND_WASH",
+        "timestamp": "2026-04-09T10:49:35.013Z",
+        "lotId": "lot_010",
+        "parentLotIds": [
+          "lot_007",
+          "lot_008"
+        ],
+        "outputLotIds": [
+          "lot_011"
+        ],
+        "actorId": "actor_proc_01",
+        "facilityId": "fac_agg_01",
+        "inputWeightKg": 3462,
+        "outputWeightKg": 3400,
+        "losses": [
+          {
+            "type": "pulp",
+            "weightKg": 62
+          }
+        ],
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Processed with typed losses",
+        "createdBy": "usr_003",
+        "updatedBy": "usr_003",
+        "createdAt": "2026-04-09T10:49:35.013Z",
+        "updatedAt": "2026-04-09T10:49:35.013Z"
+      },
+      {
+        "id": "evt_025",
+        "type": "TRANSFER_CUSTODY",
+        "timestamp": "2026-04-09T10:51:11.752Z",
+        "lotId": "lot_011",
+        "actorId": "actor_transport_01",
+        "fromActorId": "actor_proc_01",
+        "toActorId": "actor_transport_01",
+        "weightKg": 3400,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Custody accepted",
+        "createdBy": "usr_008",
+        "updatedBy": "usr_008",
+        "createdAt": "2026-04-09T10:51:11.752Z",
+        "updatedAt": "2026-04-09T10:51:11.752Z"
       }
     ],
     "rfqs": [
@@ -1352,6 +1738,31 @@
         "publicLotCode": "ETH-0D8E-5B71-CC44-006",
         "lotId": "lot_006",
         "traceKey": "TRC-006-INT"
+      },
+      {
+        "publicLotCode": "ETH-569B-28B0-B53A",
+        "lotId": "lot_007",
+        "traceKey": "TRC-5DA6-2465"
+      },
+      {
+        "publicLotCode": "ETH-D7F4-5F16-F454",
+        "lotId": "lot_008",
+        "traceKey": "TRC-AB18-DD2C"
+      },
+      {
+        "publicLotCode": "ETH-3CB1-35AC-2FE9",
+        "lotId": "lot_009",
+        "traceKey": "TRC-02ED-A65C"
+      },
+      {
+        "publicLotCode": "ETH-0249-0BDB-384F",
+        "lotId": "lot_010",
+        "traceKey": "TRC-5B99-8DD3"
+      },
+      {
+        "publicLotCode": "ETH-E05D-A080-7299",
+        "lotId": "lot_011",
+        "traceKey": "TRC-5EEF-9CD9"
       }
     ]
   }
