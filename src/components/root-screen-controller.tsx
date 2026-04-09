@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Funnel,
   FunnelChart,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -17,9 +20,40 @@ import {
   YAxis,
 } from "recharts";
 
+import { FarmerFieldEditForm } from "@/components/farmer-field-edit-form";
+import { LineageTree, buildLineageNodes } from "@/components/lot-lineage-tree";
 import { Button } from "@/components/ui/button";
+import {
+  canTransporterAcceptLot,
+  canTransporterHandoverToLab,
+  isExportTradeEligibleLot,
+  isLabIntakeLot,
+  labResultSummaryForLot,
+  normalizeLotLabStatus,
+} from "@/lib/lab-flow";
+import { resolveLotIdFromPublicCode } from "@/lib/lot-public-code";
+import {
+  farmFieldFormSchema,
+  labResultFormSchema,
+  offerDraftSchema,
+  otpSchema,
+  rfqDraftSchema,
+} from "@/lib/schemas/forms";
 import { useAppStore } from "@/store/use-app-store";
-import type { Lot } from "@/types/mock-data";
+import type { LiveDataBundle, Lot, MockDataBundle, User } from "@/types/mock-data";
+
+const FarmerFieldMapPicker = dynamic(
+  () =>
+    import("@/components/farmer-field-map-picker").then((mod) => mod.FarmerFieldMapPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-64 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-500">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 function ScreenCard({ title, description }: { title: string; description: string }) {
   return (
@@ -30,7 +64,15 @@ function ScreenCard({ title, description }: { title: string; description: string
   );
 }
 
-export function RootScreenController() {
+export function RootScreenController({
+  monitorPreview = false,
+  previewEmailPrefill = "",
+  previewAutoLogin = false,
+}: {
+  monitorPreview?: boolean;
+  previewEmailPrefill?: string;
+  previewAutoLogin?: boolean;
+}) {
   const currentState = useAppStore((s) => s.currentState);
   const data = useAppStore((s) => s.data);
   const authenticated = useAppStore((s) => s.authenticated);
@@ -51,17 +93,50 @@ export function RootScreenController() {
   const validatePendingLot = useAppStore((s) => s.validatePendingLot);
   const processLotWithLosses = useAppStore((s) => s.processLotWithLosses);
   const acceptTransportCustody = useAppStore((s) => s.acceptTransportCustody);
+  const handoverCustodyToLab = useAppStore((s) => s.handoverCustodyToLab);
+  const receiveLotAsAggregator = useAppStore((s) => s.receiveLotAsAggregator);
+  const createAggregatedLot = useAppStore((s) => s.createAggregatedLot);
+  const updateProvisionalLot = useAppStore((s) => s.updateProvisionalLot);
+  const archiveFarmerLot = useAppStore((s) => s.archiveFarmerLot);
+  const createFarmField = useAppStore((s) => s.createFarmField);
+  const updateFarmField = useAppStore((s) => s.updateFarmField);
+  const archiveFarmField = useAppStore((s) => s.archiveFarmField);
+  const createImporterRfq = useAppStore((s) => s.createImporterRfq);
+  const updateImporterRfq = useAppStore((s) => s.updateImporterRfq);
+  const archiveImporterRfq = useAppStore((s) => s.archiveImporterRfq);
+  const createExporterOffer = useAppStore((s) => s.createExporterOffer);
+  const updateLotExportReservation = useAppStore((s) => s.updateLotExportReservation);
+  const updateBankApprovalRecord = useAppStore((s) => s.updateBankApprovalRecord);
+  const createLabResultRecord = useAppStore((s) => s.createLabResultRecord);
+  const updateLabResultRecord = useAppStore((s) => s.updateLabResultRecord);
+  const finalizeLabResultRecord = useAppStore((s) => s.finalizeLabResultRecord);
+  const quarantineLot = useAppStore((s) => s.quarantineLot);
+  const releaseLotQuarantine = useAppStore((s) => s.releaseLotQuarantine);
+  const adminArchiveEntity = useAppStore((s) => s.adminArchiveEntity);
+  const resetLiveDataToSeed = useAppStore((s) => s.resetLiveDataToSeed);
+  const exportLiveDataSnapshot = useAppStore((s) => s.exportLiveDataSnapshot);
+  const clearLocalState = useAppStore((s) => s.clearLocalState);
   const userId = useAppStore((s) => s.userId);
   const primaryRole = useAppStore((s) => s.primaryRole);
   const goToState = useAppStore((s) => s.goToState);
   const openLotDetail = useAppStore((s) => s.openLotDetail);
+  const clearSelectedLot = useAppStore((s) => s.clearSelectedLot);
   const startTradeFlow = useAppStore((s) => s.startTradeFlow);
   const openRfqDetail = useAppStore((s) => s.openRfqDetail);
+  const openRfqEdit = useAppStore((s) => s.openRfqEdit);
   const openOfferDetail = useAppStore((s) => s.openOfferDetail);
   const openContractDetail = useAppStore((s) => s.openContractDetail);
   const openBankReview = useAppStore((s) => s.openBankReview);
+  const openBankApprovalEdit = useAppStore((s) => s.openBankApprovalEdit);
   const openLabResult = useAppStore((s) => s.openLabResult);
+  const openLabResultEdit = useAppStore((s) => s.openLabResultEdit);
+  const openFarmerFieldEdit = useAppStore((s) => s.openFarmerFieldEdit);
+  const setAdminDataEntity = useAppStore((s) => s.setAdminDataEntity);
   const setOperationResult = useAppStore((s) => s.setOperationResult);
+  const selectedFarmId = useAppStore((s) => s.selectedFarmId);
+  const adminDataEntity = useAppStore((s) => s.adminDataEntity);
+  const lastOutputLotId = useAppStore((s) => s.lastOutputLotId);
+  const permissions = useAppStore((s) => s.permissions);
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -72,6 +147,16 @@ export function RootScreenController() {
   const [decoderStatus, setDecoderStatus] = useState<
     "idle" | "loading" | "success" | "not_found"
   >("idle");
+  const [importerTraceCode, setImporterTraceCode] = useState("");
+  const [importerDecodedLotId, setImporterDecodedLotId] = useState<string | null>(null);
+  const [importerTraceStatus, setImporterTraceStatus] = useState<
+    "idle" | "loading" | "success" | "not_found"
+  >("idle");
+  const [monitorSearch, setMonitorSearch] = useState("");
+  const [monitorSelectedUserId, setMonitorSelectedUserId] = useState<string | null>(null);
+  const [monitorPreviewReload, setMonitorPreviewReload] = useState(0);
+  const [monitorPreviewResetCounter, setMonitorPreviewResetCounter] = useState(() => Date.now());
+  const [monitorAutoLogin, setMonitorAutoLogin] = useState(false);
   const [pickFarmId, setPickFarmId] = useState("");
   const [pickWeightKg, setPickWeightKg] = useState("");
   const [validateWeightKg, setValidateWeightKg] = useState("");
@@ -79,11 +164,152 @@ export function RootScreenController() {
   const [lossRows, setLossRows] = useState<Array<{ type: string; weightKg: string }>>([
     { type: "pulp", weightKg: "" },
   ]);
+  const [processNotes, setProcessNotes] = useState("");
+  const [processGrade, setProcessGrade] = useState("");
+  const [processFacilityId, setProcessFacilityId] = useState("");
+  const [processType, setProcessType] = useState<"PROCESS_PULP_AND_WASH" | "PROCESS_HULL_AND_GRADE">(
+    "PROCESS_PULP_AND_WASH",
+  );
+  const [fieldForm, setFieldForm] = useState({
+    name: "",
+    region: "",
+    zone: "",
+    woreda: "",
+    kebele: "",
+    country: "Ethiopia",
+    elevationM: "1800",
+    sizeHectares: "1",
+    farmingType: "smallholder",
+    lat: "6.6",
+    lng: "38.4",
+    varieties: "74110",
+    eudrStatus: "ready",
+    notes: "",
+    polygonText: "",
+  });
+  /** Boundary from map (or cleared to []); optional JSON import when map has fewer than 3 vertices */
+  const [fieldMapPolygon, setFieldMapPolygon] = useState<[number, number][]>([]);
+  useEffect(() => {
+    if (currentState === "farmer_field_new") {
+      setFieldMapPolygon([]);
+      setFieldForm((f) => ({ ...f, polygonText: "" }));
+    }
+  }, [currentState]);
+  useEffect(() => {
+    if (monitorPreview) {
+      setMonitorAutoLogin(previewAutoLogin);
+    }
+  }, [monitorPreview, previewAutoLogin]);
+
+  useEffect(() => {
+    if (!monitorPreview || !previewEmailPrefill) return;
+    if (currentState !== "auth_login") return;
+    setIdentifier(previewEmailPrefill);
+  }, [monitorPreview, previewEmailPrefill, currentState]);
+
+  useEffect(() => {
+    previewAutoLoginAttempted.current = false;
+  }, [previewEmailPrefill, monitorAutoLogin]);
+
+  useEffect(() => {
+    if (!monitorPreview || !monitorAutoLogin || !data) return;
+    if (authenticated || currentState !== "auth_login") return;
+    if (previewAutoLoginAttempted.current) return;
+    const target = data.users.find((u) => u.email.toLowerCase() === previewEmailPrefill.toLowerCase());
+    if (!target) return;
+    previewAutoLoginAttempted.current = true;
+    const loginResult = attemptLogin(target.email, target.password);
+    if (!loginResult.ok) {
+      setError(loginResult.message ?? "Auto-login failed.");
+      return;
+    }
+    const otpResult = verifyOtp(target.defaultOtp);
+    if (!otpResult.ok) {
+      setError(otpResult.message ?? "Auto-login OTP failed.");
+    }
+  }, [
+    monitorPreview,
+    monitorAutoLogin,
+    data,
+    authenticated,
+    currentState,
+    previewEmailPrefill,
+    attemptLogin,
+    verifyOtp,
+  ]);
+  const [adminSearch, setAdminSearch] = useState("");
+  const [aggReceiveLotId, setAggReceiveLotId] = useState("");
+  const [aggSelectedParentIds, setAggSelectedParentIds] = useState<string[]>([]);
+  const [aggWeight, setAggWeight] = useState("");
+  const [processorLotPick, setProcessorLotPick] = useState("");
+  const [transporterLotPick, setTransporterLotPick] = useState("");
+  const [reservationLabel, setReservationLabel] = useState("");
+  const [importerRfqForm, setImporterRfqForm] = useState({
+    title: "",
+    commodity: "coffee",
+    form: "green",
+    targetQuantityKg: "10000",
+    minimumGrade: "G2",
+    originPreference: "Ethiopia",
+    incoterm: "FOB",
+    deliveryWindowStart: "2026-05-01",
+    deliveryWindowEnd: "2026-08-01",
+  });
+  const [exporterOfferForm, setExporterOfferForm] = useState({
+    rfqId: "",
+    offeredQuantityKg: "5000",
+    pricePerKgUsd: "4.5",
+    currency: "USD",
+    linkedLotId: "",
+  });
+  const [bankEditForm, setBankEditForm] = useState({
+    guaranteeType: "",
+    guaranteeStatus: "",
+    exposureNotes: "",
+    status: "",
+  });
+  const [labEditForm, setLabEditForm] = useState({
+    sampleCode: "",
+    moisturePercent: "10",
+    screenSize: "15+",
+    defectCount: "0",
+    cupScore: "85",
+    gradeConfirmed: "G2",
+  });
+  const [farmerEditWeight, setFarmerEditWeight] = useState("");
+  const [farmerEditNotes, setFarmerEditNotes] = useState("");
+  const previewAutoLoginAttempted = useRef(false);
 
   const pendingUser = useMemo(
     () => (data?.users ?? []).find((u) => u.id === pendingLoginUserId) ?? null,
     [data?.users, pendingLoginUserId],
   );
+  const monitorSupportedRoles = useMemo(
+    () =>
+      new Set([
+        "farmer",
+        "aggregator",
+        "processor",
+        "transporter",
+        "lab_officer",
+        "exporter",
+        "importer",
+        "bank_officer",
+        "admin",
+      ]),
+    [],
+  );
+  const monitoredUsers = useMemo(() => {
+    if (!data) return [] as User[];
+    return data.users.filter((u) => monitorSupportedRoles.has(u.primaryRole));
+  }, [data, monitorSupportedRoles]);
+  const filteredMonitoredUsers = useMemo(() => {
+    const q = monitorSearch.trim().toLowerCase();
+    if (!q) return monitoredUsers;
+    return monitoredUsers.filter((u) =>
+      `${u.primaryRole} ${u.fullName} ${u.email}`.toLowerCase().includes(q),
+    );
+  }, [monitorSearch, monitoredUsers]);
 
   const marketListings = useMemo(() => {
     if (!data) return [];
@@ -175,14 +401,14 @@ export function RootScreenController() {
   }, [primaryRole]);
 
   const primaryCtaByRole: Record<string, string> = {
-    farmer: "Record Pick",
+    farmer: "Create lot",
     aggregator: "Validate Lot",
     processor: "Process Lot",
     exporter: "Review Ready Lot",
     importer: "Review RFQ",
     bank_officer: "Review Approval",
     transporter: "Accept Custody",
-    lab_officer: "Record Result",
+    lab_officer: "Open Lab Queue",
     admin: "Review Exceptions",
   };
 
@@ -224,7 +450,7 @@ export function RootScreenController() {
     },
     lab_officer: {
       title: "Lab Workspace",
-      subtitle: "Review sample outcomes and quality verification records.",
+      subtitle: "Intake after transporter handoff — record, approve, or fail before export.",
       activityTitle: "Recent Lab Results",
     },
     admin: {
@@ -239,34 +465,145 @@ export function RootScreenController() {
     return data.dashboardMetrics[dashboardKey] ?? null;
   }, [data, dashboardKey]);
 
+  const linkedActorId = useMemo(
+    () => data?.users.find((user) => user.id === userId)?.linkedActorId ?? null,
+    [data, userId],
+  );
+
+  const myFarms = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.farms.filter(
+      (f) =>
+        (f.ownerActorId === linkedActorId || f.managerActorId === linkedActorId) &&
+        f.status !== "archived",
+    );
+  }, [data, linkedActorId]);
+
+  /** Farmer-origin lots validated and still held by another actor — ready for aggregator receive */
+  const aggregatorReceiveCandidates = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter(
+      (l) =>
+        l.status === "in_stock" &&
+        l.integrityStatus === "verified" &&
+        l.currentCustodianActorId !== linkedActorId &&
+        !["consumed", "cancelled", "archived", "quarantined"].includes(l.status),
+    );
+  }, [data, linkedActorId]);
+
+  /** Lots currently in aggregator custody that can be combined into a new aggregate */
+  const aggregatorAggregateCandidates = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter(
+      (l) =>
+        l.status === "in_stock" &&
+        l.integrityStatus === "verified" &&
+        l.currentCustodianActorId === linkedActorId,
+    );
+  }, [data, linkedActorId]);
+
+  const processorIntakeLots = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter(
+      (l) =>
+        l.status === "in_stock" &&
+        l.integrityStatus === "verified" &&
+        l.currentCustodianActorId === linkedActorId,
+    );
+  }, [data, linkedActorId]);
+
+  const transporterPickupCandidates = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter((l) => canTransporterAcceptLot(l, linkedActorId));
+  }, [data, linkedActorId]);
+
+  const transporterHandoverCandidates = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter((l) => canTransporterHandoverToLab(l, linkedActorId));
+  }, [data, linkedActorId]);
+
+  const transporterLotOptions = useMemo(() => {
+    const m = new Map<string, (typeof transporterPickupCandidates)[0]>();
+    for (const l of transporterPickupCandidates) m.set(l.id, l);
+    for (const l of transporterHandoverCandidates) m.set(l.id, l);
+    return [...m.values()];
+  }, [transporterPickupCandidates, transporterHandoverCandidates]);
+
+  const labIntakeLots = useMemo(() => {
+    if (!data || !linkedActorId) return [];
+    return data.lots.filter((l) => isLabIntakeLot(l, linkedActorId));
+  }, [data, linkedActorId]);
+
+  const exporterOfferLotCandidates = useMemo(() => {
+    if (!data) return [];
+    return data.lots.filter((l) => isExportTradeEligibleLot(l, data.labResults));
+  }, [data]);
+
+  const lotDetailDefaultLot = useMemo(() => {
+    if (!data || !primaryRole || !linkedActorId) return null;
+    if (primaryRole === "aggregator") {
+      return data.lots.find((l) => l.status === "pending_validation") ?? null;
+    }
+    if (primaryRole === "processor") {
+      return processorIntakeLots[0] ?? null;
+    }
+    if (primaryRole === "transporter") {
+      return transporterLotOptions[0] ?? null;
+    }
+    if (primaryRole === "exporter") {
+      return data.lots.find((l) => isExportTradeEligibleLot(l, data.labResults)) ?? null;
+    }
+    if (primaryRole === "lab_officer") {
+      return labIntakeLots[0] ?? null;
+    }
+    return null;
+  }, [data, labIntakeLots, linkedActorId, primaryRole, processorIntakeLots, transporterLotOptions]);
+
+  useEffect(() => {
+    if (currentState !== "admin_role_monitor") return;
+    if (!monitorSelectedUserId && monitoredUsers.length) {
+      setMonitorSelectedUserId(monitoredUsers[0]?.id ?? null);
+      return;
+    }
+    if (
+      monitorSelectedUserId &&
+      monitoredUsers.length &&
+      !monitoredUsers.some((u) => u.id === monitorSelectedUserId)
+    ) {
+      setMonitorSelectedUserId(monitoredUsers[0]?.id ?? null);
+    }
+  }, [currentState, monitorSelectedUserId, monitoredUsers]);
+
   const recentActivity = useMemo(() => {
-    if (!data || !primaryRole) return [];
-    const actorId = data.users.find((user) => user.id === userId)?.linkedActorId;
-    if (!actorId) return [];
+    if (!data || !primaryRole || !linkedActorId) return [];
     if (primaryRole === "farmer") {
       return data.lots
-        .filter((lot) => lot.originActorId === actorId)
+        .filter((lot) => lot.originActorId === linkedActorId)
         .map((lot) => `Lot ${lot.publicLotCode} (${lot.status})`);
     }
     if (primaryRole === "aggregator" || primaryRole === "processor" || primaryRole === "transporter") {
       return data.inventoryEvents
-        .filter((event) => event.actorId === actorId)
+        .filter((event) => event.actorId === linkedActorId)
         .map((event) => `${event.type} - ${event.lotId}`);
     }
     if (primaryRole === "exporter") {
-      return data.offers.filter((offer) => offer.sellerActorId === actorId).map((offer) => `Offer ${offer.id}`);
+      return data.offers
+        .filter((offer) => offer.sellerActorId === linkedActorId)
+        .map((offer) => `Offer ${offer.id}`);
     }
     if (primaryRole === "importer") {
-      return data.rfqs.filter((rfq) => rfq.buyerActorId === actorId).map((rfq) => `RFQ ${rfq.uid}`);
+      return data.rfqs
+        .filter((rfq) => rfq.buyerActorId === linkedActorId)
+        .map((rfq) => `RFQ ${rfq.uid}`);
     }
     if (primaryRole === "bank_officer") {
       return data.bankApprovals
-        .filter((approval) => approval.bankActorId === actorId)
+        .filter((approval) => approval.bankActorId === linkedActorId)
         .map((approval) => `Approval ${approval.id} (${approval.status})`);
     }
     if (primaryRole === "lab_officer") {
       return data.labResults
-        .filter((result) => result.labActorId === actorId)
+        .filter((result) => result.labActorId === linkedActorId)
         .map((result) => `Lab ${result.sampleCode} (${result.status})`);
     }
     if (primaryRole === "admin") {
@@ -275,16 +612,17 @@ export function RootScreenController() {
         .map((lot) => `Exception: ${lot.publicLotCode} quarantined`);
     }
     return [];
-  }, [data, primaryRole, userId]);
+  }, [data, linkedActorId, primaryRole]);
 
   const chartSpec = useMemo(() => {
     if (!data || !primaryRole) return null;
     if (dashboardEntry?.charts?.[0]) return dashboardEntry.charts[0];
 
     if (primaryRole === "transporter") {
-      const actorId = data.users.find((user) => user.id === userId)?.linkedActorId;
       const transfers = data.inventoryEvents.filter(
-        (event) => event.actorId === actorId && event.type.includes("TRANSFER"),
+        (event) =>
+          event.actorId === linkedActorId &&
+          (event.type.includes("TRANSFER") || event.type === "HANDOVER_TO_LAB"),
       );
       return {
         type: "bar",
@@ -293,26 +631,162 @@ export function RootScreenController() {
       };
     }
     if (primaryRole === "lab_officer") {
-      const actorId = data.users.find((user) => user.id === userId)?.linkedActorId;
       const rows = data.labResults
-        .filter((result) => result.labActorId === actorId)
+        .filter((result) => result.labActorId === linkedActorId)
         .map((result) => ({ sample: result.sampleCode, cupScore: result.cupScore }));
-      return { type: "line", title: "Cup Score Trend", data: rows.length ? rows : [{ sample: "N/A", cupScore: 0 }] };
+      return { type: "line", title: "Cup score by sample", data: rows };
     }
     return { type: "bar", title: "No Data", data: [{ name: "items", value: 0 }] };
-  }, [dashboardEntry, data, primaryRole, userId]);
+  }, [dashboardEntry, data, linkedActorId, primaryRole]);
 
-  const summaryCards = useMemo(() => {
-    if (dashboardEntry?.summaryCards?.length) return dashboardEntry.summaryCards.slice(0, 4);
-    if (!data || !primaryRole) return [];
-    const fallback = [
-      { label: "My Lots", value: data.lots.length },
-      { label: "Events", value: data.inventoryEvents.length },
-      { label: "Records", value: recentActivity.length },
-      { label: "Role", value: primaryRole },
-    ];
-    return fallback.slice(0, 4);
-  }, [dashboardEntry, data, primaryRole, recentActivity.length]);
+  const kpiCards = useMemo(() => {
+    if (!data || !primaryRole || !linkedActorId) {
+      return dashboardEntry?.summaryCards?.length ? dashboardEntry.summaryCards.slice(0, 4) : [];
+    }
+
+    if (primaryRole === "farmer") {
+      const mine = data.lots.filter((lot) => lot.originActorId === linkedActorId);
+      return [
+        { label: "My Fields", value: myFarms.length },
+        { label: "My Lots", value: mine.length },
+        { label: "Pending Validation", value: mine.filter((lot) => lot.status === "pending_validation").length },
+        { label: "Total Picked (kg)", value: Math.round(mine.reduce((sum, lot) => sum + lot.weightKg, 0)) },
+      ];
+    }
+
+    if (primaryRole === "aggregator") {
+      return [
+        { label: "Pending farmer picks", value: data.lots.filter((lot) => lot.status === "pending_validation").length },
+        { label: "Ready to receive (queue)", value: aggregatorReceiveCandidates.length },
+        { label: "In your custody", value: aggregatorAggregateCandidates.length },
+        {
+          label: "Validation events",
+          value: data.inventoryEvents.filter((event) => event.type === "VALIDATE_PICK").length,
+        },
+      ];
+    }
+
+    if (primaryRole === "processor") {
+      return [
+        { label: "Intake (your custody)", value: processorIntakeLots.length },
+        { label: "In stock (all)", value: data.lots.filter((lot) => lot.status === "in_stock").length },
+        { label: "Ready for export", value: data.lots.filter((lot) => lot.status === "ready_for_export").length },
+        {
+          label: "Processing events",
+          value: data.inventoryEvents.filter((event) => event.type === "PROCESS_PULP_AND_WASH").length,
+        },
+      ];
+    }
+
+    if (primaryRole === "exporter") {
+      const eligible = data.lots.filter((lot) => isExportTradeEligibleLot(lot, data.labResults));
+      return [
+        { label: "Lab-cleared / export-eligible", value: eligible.length },
+        { label: "Submitted Offers", value: data.offers.filter((offer) => offer.sellerActorId === linkedActorId).length },
+        { label: "Linked Contracts", value: data.contracts.filter((ctr) => ctr.sellerActorId === linkedActorId).length },
+        { label: "Reserved lots", value: eligible.filter((l) => l.status === "contract_reserved").length },
+      ];
+    }
+
+    if (primaryRole === "importer") {
+      return [
+        { label: "Open RFQs", value: data.rfqs.filter((rfq) => rfq.buyerActorId === linkedActorId).length },
+        { label: "Active Contracts", value: data.contracts.filter((ctr) => ctr.buyerActorId === linkedActorId).length },
+        { label: "Offers Received", value: data.offers.length },
+        { label: "Recent Activity", value: recentActivity.length },
+      ];
+    }
+
+    if (primaryRole === "bank_officer") {
+      return [
+        {
+          label: "Approvals",
+          value: data.bankApprovals.filter((approval) => approval.bankActorId === linkedActorId).length,
+        },
+        {
+          label: "Approved",
+          value: data.bankApprovals.filter((approval) => approval.status.toLowerCase().includes("approved")).length,
+        },
+        { label: "Contracts In Review", value: data.contracts.filter((ctr) => ctr.status === "bank_review").length },
+        { label: "Recent Activity", value: recentActivity.length },
+      ];
+    }
+
+    if (primaryRole === "transporter") {
+      return [
+        { label: "Pickup queue (awaiting transport)", value: transporterPickupCandidates.length },
+        { label: "Handover to lab (in your custody)", value: transporterHandoverCandidates.length },
+        { label: "Your custody lots", value: data.lots.filter((lot) => lot.currentCustodianActorId === linkedActorId).length },
+        {
+          label: "Custody events",
+          value: data.inventoryEvents.filter((event) => event.type.includes("TRANSFER_CUSTODY")).length,
+        },
+      ];
+    }
+
+    if (primaryRole === "lab_officer") {
+      const mine = data.labResults.filter((result) => result.labActorId === linkedActorId);
+      return [
+        { label: "Lab intake queue", value: labIntakeLots.length },
+        { label: "Draft results (pending)", value: mine.filter((r) => r.status === "pending").length },
+        { label: "Approved", value: mine.filter((r) => r.status === "approved" || r.status === "final").length },
+        { label: "Failed", value: mine.filter((r) => r.status === "failed").length },
+      ];
+    }
+
+    if (primaryRole === "admin") {
+      return [
+        { label: "Total lots (live)", value: data.lots.length },
+        { label: "Compromised lots", value: data.lots.filter((lot) => lot.integrityStatus === "compromised").length },
+        { label: "Quarantined", value: data.lots.filter((lot) => lot.status === "quarantined").length },
+        { label: "Inventory events", value: data.inventoryEvents.length },
+      ];
+    }
+
+    return dashboardEntry?.summaryCards?.length ? dashboardEntry.summaryCards.slice(0, 4) : [];
+  }, [
+    aggregatorAggregateCandidates.length,
+    aggregatorReceiveCandidates.length,
+    dashboardEntry,
+    data,
+    linkedActorId,
+    primaryRole,
+    processorIntakeLots.length,
+    labIntakeLots.length,
+    transporterHandoverCandidates.length,
+    transporterPickupCandidates.length,
+    myFarms.length,
+  ]);
+
+  useEffect(() => {
+    if (!processorIntakeLots.length) {
+      setProcessorLotPick("");
+      return;
+    }
+    setProcessorLotPick((prev) =>
+      prev && processorIntakeLots.some((l) => l.id === prev) ? prev : processorIntakeLots[0].id,
+    );
+  }, [processorIntakeLots]);
+
+  useEffect(() => {
+    if (!transporterLotOptions.length) {
+      setTransporterLotPick("");
+      return;
+    }
+    setTransporterLotPick((prev) =>
+      prev && transporterLotOptions.some((l) => l.id === prev) ? prev : transporterLotOptions[0].id,
+    );
+  }, [transporterLotOptions]);
+
+  useEffect(() => {
+    if (!aggregatorReceiveCandidates.length) {
+      setAggReceiveLotId("");
+      return;
+    }
+    setAggReceiveLotId((prev) =>
+      prev && aggregatorReceiveCandidates.some((l) => l.id === prev) ? prev : aggregatorReceiveCandidates[0].id,
+    );
+  }, [aggregatorReceiveCandidates]);
 
   if (currentState === "loading") {
     return <ScreenCard title="Loading" description="Initializing app engine and local mock data." />;
@@ -394,27 +868,1057 @@ export function RootScreenController() {
     );
   }
 
+  if (currentState === "farmer_fields" && primaryRole === "farmer" && data && linkedActorId) {
+    return (
+      <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">My fields</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            {myFarms.length} active field{myFarms.length === 1 ? "" : "s"} linked to your actor.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-center text-sm text-zinc-500">
+          Map preview placeholder — GPS and polygon summaries appear per field below.
+        </div>
+        <div className="space-y-2">
+          {myFarms.map((farm) => (
+            <details key={farm.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">{farm.name}</summary>
+              <div className="mt-2 space-y-1 text-sm text-zinc-600">
+                <p>
+                  GPS: {farm.coordinates.lat.toFixed(4)}, {farm.coordinates.lng.toFixed(4)}
+                </p>
+                <p>Polygon vertices: {farm.polygon?.length ?? 0}</p>
+                <p>
+                  {farm.region} / {farm.zone} / {farm.woreda} / {farm.kebele}
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="mt-3 w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => openFarmerFieldEdit(farm.id)}
+              >
+                Edit field
+              </Button>
+            </details>
+          ))}
+        </div>
+        <Button type="button" className="w-full" onClick={() => goToState("farmer_field_new")}>
+          Add field
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "farmer_field_new" && primaryRole === "farmer" && !linkedActorId) {
+    return (
+      <ScreenCard
+        title="Session required"
+        description="Sign in as a farmer with a linked actor to add a field."
+      />
+    );
+  }
+
+  if (currentState === "farmer_field_new" && primaryRole === "farmer" && linkedActorId) {
+    const latN = Number(fieldForm.lat);
+    const lngN = Number(fieldForm.lng);
+    const centerLat = Number.isFinite(latN) ? latN : 6.6;
+    const centerLng = Number.isFinite(lngN) ? lngN : 38.4;
+    const polygonForMap = fieldMapPolygon.length >= 3 ? fieldMapPolygon : null;
+
+    return (
+      <div className="mx-auto mt-10 w-full max-w-3xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">New field</h1>
+        <p className="text-sm text-zinc-600">
+          Set location details, then draw your field boundary on the map. Drag the pin for the main GPS
+          point. Boundary is optional; you can save with a point only.
+        </p>
+        <div className="space-y-3">
+          {(
+            [
+              ["name", "Field name"],
+              ["region", "Region"],
+              ["zone", "Zone"],
+              ["woreda", "Woreda"],
+              ["kebele", "Kebele"],
+            ] as const
+          ).map(([k, label]) => (
+            <input
+              key={k}
+              value={fieldForm[k as keyof typeof fieldForm] as string}
+              onChange={(e) => setFieldForm((f) => ({ ...f, [k]: e.target.value }))}
+              placeholder={label}
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            />
+          ))}
+          <input
+            value={fieldForm.country}
+            onChange={(e) => setFieldForm((f) => ({ ...f, country: e.target.value }))}
+            placeholder="Country"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              inputMode="decimal"
+              value={fieldForm.lat}
+              onChange={(e) => setFieldForm((f) => ({ ...f, lat: e.target.value }))}
+              placeholder="Latitude"
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            />
+            <input
+              inputMode="decimal"
+              value={fieldForm.lng}
+              onChange={(e) => setFieldForm((f) => ({ ...f, lng: e.target.value }))}
+              placeholder="Longitude"
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            />
+          </div>
+          <FarmerFieldMapPicker
+            centerLat={centerLat}
+            centerLng={centerLng}
+            polygon={polygonForMap}
+            onPolygonChange={setFieldMapPolygon}
+            onFieldPointChange={(la, ln) => {
+              setFieldForm((f) => ({ ...f, lat: String(la), lng: String(ln) }));
+            }}
+          />
+          <Button
+            type="button"
+            className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+            onClick={() => setFieldMapPolygon([])}
+          >
+            Clear boundary
+          </Button>
+          <input
+            inputMode="decimal"
+            value={fieldForm.elevationM}
+            onChange={(e) => setFieldForm((f) => ({ ...f, elevationM: e.target.value }))}
+            placeholder="Elevation (m)"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <input
+            inputMode="decimal"
+            value={fieldForm.sizeHectares}
+            onChange={(e) => setFieldForm((f) => ({ ...f, sizeHectares: e.target.value }))}
+            placeholder="Size (hectares)"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <input
+            value={fieldForm.farmingType}
+            onChange={(e) => setFieldForm((f) => ({ ...f, farmingType: e.target.value }))}
+            placeholder="Farming type"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <input
+            value={fieldForm.varieties}
+            onChange={(e) => setFieldForm((f) => ({ ...f, varieties: e.target.value }))}
+            placeholder="Coffee varieties (comma-separated)"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <input
+            value={fieldForm.eudrStatus}
+            onChange={(e) => setFieldForm((f) => ({ ...f, eudrStatus: e.target.value }))}
+            placeholder="EUDR status"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <summary className="cursor-pointer text-sm font-medium">Advanced: import polygon JSON</summary>
+            <p className="mt-1 text-xs text-zinc-500">
+              Used only if you have not drawn at least three vertices on the map.
+            </p>
+            <textarea
+              value={fieldForm.polygonText}
+              onChange={(e) => setFieldForm((f) => ({ ...f, polygonText: e.target.value }))}
+              placeholder='[[38.47,6.62],[38.48,6.63],...] as [lng,lat][]'
+              rows={4}
+              className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs"
+            />
+          </details>
+          <textarea
+            value={fieldForm.notes}
+            onChange={(e) => setFieldForm((f) => ({ ...f, notes: e.target.value }))}
+            placeholder="Notes"
+            rows={2}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+        </div>
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            let polygon: [number, number][] | undefined;
+            if (fieldMapPolygon.length >= 3) {
+              polygon = fieldMapPolygon;
+            } else if (fieldForm.polygonText.trim()) {
+              try {
+                const parsedJson = JSON.parse(fieldForm.polygonText) as unknown;
+                if (!Array.isArray(parsedJson)) throw new Error("Polygon must be an array");
+                polygon = parsedJson as [number, number][];
+              } catch {
+                setError("Invalid polygon JSON.");
+                return;
+              }
+            }
+            const parsed = farmFieldFormSchema.safeParse({
+              name: fieldForm.name,
+              region: fieldForm.region,
+              zone: fieldForm.zone,
+              woreda: fieldForm.woreda,
+              kebele: fieldForm.kebele,
+              country: fieldForm.country,
+              elevationM: Number(fieldForm.elevationM),
+              sizeHectares: Number(fieldForm.sizeHectares),
+              coffeeVarieties: fieldForm.varieties.split(",").map((s) => s.trim()).filter(Boolean),
+              farmingType: fieldForm.farmingType,
+              coordinates: { lat: Number(fieldForm.lat), lng: Number(fieldForm.lng) },
+              polygon,
+              eudrStatus: fieldForm.eudrStatus,
+              notes: fieldForm.notes || undefined,
+            });
+            if (!parsed.success) {
+              setError(parsed.error.issues.map((i) => i.message).join("; "));
+              return;
+            }
+            const r = createFarmField({
+              ...parsed.data,
+              polygon: parsed.data.polygon ?? [],
+              ownerActorId: linkedActorId,
+              managerActorId: linkedActorId,
+              organizationId: data?.users.find((u) => u.id === userId)?.organizationId ?? "org_unknown",
+              status: "active",
+            });
+            if (!r.ok) {
+              setError(r.message);
+              return;
+            }
+            setError(null);
+            goToState("farmer_fields");
+          }}
+        >
+          Save field
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("farmer_fields")}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "farmer_field_edit" && primaryRole === "farmer" && data && selectedFarmId) {
+    const ef = data.farms.find((f) => f.id === selectedFarmId);
+    if (!ef) {
+      return (
+        <ScreenCard title="Field not found" description="Return to your field list." />
+      );
+    }
+    return (
+      <FarmerFieldEditForm
+        ef={ef}
+        selectedFarmId={selectedFarmId}
+        updateFarmField={updateFarmField}
+        archiveFarmField={archiveFarmField}
+        goToState={goToState}
+      />
+    );
+  }
+
+  if (currentState === "farmer_my_lots" && primaryRole === "farmer" && data && linkedActorId) {
+    const mine = data.lots.filter((l) => l.originActorId === linkedActorId);
+    return (
+      <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">My lots</h1>
+          <p className="mt-1 text-sm text-zinc-600">Open a lot for full trace detail.</p>
+        </div>
+        {mine.map((lot) => (
+          <div key={lot.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="font-mono text-sm text-zinc-900">{lot.publicLotCode}</p>
+            <p className="text-sm text-zinc-600">
+              {lot.status} · {lot.weightKg} kg · {lot.form}
+            </p>
+            <Button type="button" className="mt-3 w-full" onClick={() => openLotDetail(lot.id)}>
+              Open lot
+            </Button>
+          </div>
+        ))}
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "importer_rfq_new" && primaryRole === "importer") {
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">New RFQ draft</h1>
+        {(
+          [
+            ["title", "title", "Title"],
+            ["commodity", "commodity", "Commodity"],
+            ["form", "form", "Form"],
+            ["targetQuantityKg", "targetQuantityKg", "Target kg"],
+            ["minimumGrade", "minimumGrade", "Min grade"],
+            ["originPreference", "originPreference", "Origin (comma)"],
+            ["incoterm", "incoterm", "Incoterm"],
+            ["deliveryWindowStart", "deliveryWindowStart", "Window start"],
+            ["deliveryWindowEnd", "deliveryWindowEnd", "Window end"],
+          ] as const
+        ).map(([k, _a, ph]) => (
+          <input
+            key={k}
+            value={importerRfqForm[k as keyof typeof importerRfqForm]}
+            onChange={(e) => setImporterRfqForm((f) => ({ ...f, [k]: e.target.value }))}
+            placeholder={ph}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+        ))}
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const parsed = rfqDraftSchema.safeParse({
+              title: importerRfqForm.title,
+              commodity: importerRfqForm.commodity,
+              form: importerRfqForm.form,
+              targetQuantityKg: Number(importerRfqForm.targetQuantityKg),
+              minimumGrade: importerRfqForm.minimumGrade,
+              originPreference: importerRfqForm.originPreference.split(",").map((s) => s.trim()).filter(Boolean),
+              incoterm: importerRfqForm.incoterm,
+              deliveryWindowStart: importerRfqForm.deliveryWindowStart,
+              deliveryWindowEnd: importerRfqForm.deliveryWindowEnd,
+            });
+            if (!parsed.success) {
+              setError(parsed.error.issues.map((i) => i.message).join("; "));
+              return;
+            }
+            const r = createImporterRfq({ ...parsed.data, invitedActorIds: [], participationRule: "open", minimumTrustScore: 0 });
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              goToState("rfq_list");
+            }
+          }}
+        >
+          Create draft
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("rfq_list")}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "rfq_edit" && primaryRole === "importer" && selectedRfq) {
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">Edit RFQ</h1>
+        <p className="text-sm text-zinc-600">{selectedRfq.title}</p>
+        <input
+          value={importerRfqForm.title || selectedRfq.title}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, title: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const r = updateImporterRfq(selectedRfq.id, { title: importerRfqForm.title || selectedRfq.title });
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              openRfqDetail(selectedRfq.id);
+            }
+          }}
+        >
+          Save draft
+        </Button>
+        <Button
+          type="button"
+          className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+          onClick={() => {
+            archiveImporterRfq(selectedRfq.id);
+            goToState("rfq_list");
+          }}
+        >
+          Archive draft
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "exporter_offer_new" && primaryRole === "exporter" && data) {
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">New offer draft</h1>
+        <select
+          value={exporterOfferForm.rfqId}
+          onChange={(e) => setExporterOfferForm((f) => ({ ...f, rfqId: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        >
+          <option value="">Select RFQ</option>
+          {data.rfqs.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.title}
+            </option>
+          ))}
+        </select>
+        <select
+          value={exporterOfferForm.linkedLotId}
+          onChange={(e) => setExporterOfferForm((f) => ({ ...f, linkedLotId: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        >
+          <option value="">Select lot</option>
+          {exporterOfferLotCandidates.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.publicLotCode} · {l.status} · {l.weightKg} kg
+            </option>
+          ))}
+        </select>
+        <input
+          value={exporterOfferForm.offeredQuantityKg}
+          onChange={(e) => setExporterOfferForm((f) => ({ ...f, offeredQuantityKg: e.target.value }))}
+          placeholder="Quantity kg"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={exporterOfferForm.pricePerKgUsd}
+          onChange={(e) => setExporterOfferForm((f) => ({ ...f, pricePerKgUsd: e.target.value }))}
+          placeholder="Price USD/kg"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={exporterOfferForm.currency}
+          onChange={(e) => setExporterOfferForm((f) => ({ ...f, currency: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const parsed = offerDraftSchema.safeParse({
+              rfqId: exporterOfferForm.rfqId,
+              offeredQuantityKg: Number(exporterOfferForm.offeredQuantityKg),
+              pricePerKgUsd: Number(exporterOfferForm.pricePerKgUsd),
+              currency: exporterOfferForm.currency,
+              linkedLotIds: exporterOfferForm.linkedLotId ? [exporterOfferForm.linkedLotId] : [],
+            });
+            if (!parsed.success) {
+              setError(parsed.error.issues.map((i) => i.message).join("; "));
+              return;
+            }
+            const r = createExporterOffer(parsed.data);
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              goToState("dashboard");
+            }
+          }}
+        >
+          Save offer
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "bank_approval_edit" && primaryRole === "bank_officer" && selectedBankApproval) {
+    const b = selectedBankApproval;
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">Edit approval</h1>
+        <p className="text-sm text-zinc-600">Contract {b.contractId}</p>
+        <input
+          value={bankEditForm.guaranteeType || b.guaranteeType}
+          onChange={(e) => setBankEditForm((f) => ({ ...f, guaranteeType: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={bankEditForm.guaranteeStatus || b.guaranteeStatus}
+          onChange={(e) => setBankEditForm((f) => ({ ...f, guaranteeStatus: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={bankEditForm.status || b.status}
+          onChange={(e) => setBankEditForm((f) => ({ ...f, status: e.target.value }))}
+          placeholder="Row status"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <textarea
+          value={bankEditForm.exposureNotes}
+          onChange={(e) => setBankEditForm((f) => ({ ...f, exposureNotes: e.target.value }))}
+          placeholder="Exposure notes"
+          rows={3}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const r = updateBankApprovalRecord(b.id, {
+              guaranteeType: bankEditForm.guaranteeType || b.guaranteeType,
+              guaranteeStatus: bankEditForm.guaranteeStatus || b.guaranteeStatus,
+              status: bankEditForm.status || b.status,
+              exposureNotes: bankEditForm.exposureNotes || b.exposureNotes,
+            });
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              goToState("bank_review");
+            }
+          }}
+        >
+          Save
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("bank_review")}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "lab_queue" && primaryRole === "lab_officer" && data && linkedActorId) {
+    return (
+      <div className="mx-auto mt-6 w-full max-w-xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">Lab intake queue</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Lots arrive here after a transporter records handover to the lab. Record a pending result, then approve or
+            fail to release (or block) export.
+          </p>
+        </div>
+        {labIntakeLots.length ? (
+          <div className="space-y-2">
+            {labIntakeLots.map((l) => {
+              const draft = data.labResults.find(
+                (r) => r.lotId === l.id && r.labActorId === linkedActorId && r.status === "pending",
+              );
+              return (
+                <div key={l.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <p className="font-mono text-sm text-zinc-900">{l.publicLotCode}</p>
+                  <p className="text-xs text-zinc-500">
+                    {l.weightKg} kg · {l.form}
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <Button type="button" className="w-full" onClick={() => openLotDetail(l.id)}>
+                      Open lot detail
+                    </Button>
+                    {draft ? (
+                      <Button
+                        type="button"
+                        className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                        onClick={() => openLabResultEdit(draft.id)}
+                      >
+                        Continue draft result
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                        onClick={() => openLotDetail(l.id)}
+                      >
+                        Open lot to record result
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-sm text-zinc-600">
+            No lots in lab intake. Complete processor output, transporter pickup, then handover to lab.
+          </div>
+        )}
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "lab_result_edit" && primaryRole === "lab_officer" && data && linkedActorId) {
+    const editing = selectedLabResultId ? data.labResults.find((l) => l.id === selectedLabResultId) : null;
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">{editing ? "Edit lab result" : "New lab result"}</h1>
+        {!editing ? (
+          <div className="space-y-2 text-sm text-zinc-600">
+            <p>Select lot and contract from current data.</p>
+            <select
+              id="lab-lot"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              defaultValue=""
+            >
+              <option value="">Select intake lot</option>
+              {labIntakeLots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.publicLotCode} · {l.weightKg} kg
+                </option>
+              ))}
+            </select>
+            <select id="lab-ctr" className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+              <option value="">No contract (optional)</option>
+              {data.contracts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.uid}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        <input
+          value={labEditForm.sampleCode || editing?.sampleCode || ""}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, sampleCode: e.target.value }))}
+          placeholder="Sample code"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={labEditForm.moisturePercent}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, moisturePercent: e.target.value }))}
+          placeholder="Moisture %"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={labEditForm.screenSize}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, screenSize: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={labEditForm.defectCount}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, defectCount: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={labEditForm.cupScore}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, cupScore: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={labEditForm.gradeConfirmed}
+          onChange={(e) => setLabEditForm((f) => ({ ...f, gradeConfirmed: e.target.value }))}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const lotEl = document.getElementById("lab-lot") as HTMLSelectElement | null;
+            const ctrEl = document.getElementById("lab-ctr") as HTMLSelectElement | null;
+            const parsed = labResultFormSchema.safeParse({
+              lotId: editing?.lotId ?? lotEl?.value ?? "",
+              contractId: editing?.contractId ?? ctrEl?.value ?? "",
+              sampleCode: labEditForm.sampleCode || editing?.sampleCode || "SMP",
+              moisturePercent: Number(labEditForm.moisturePercent),
+              screenSize: labEditForm.screenSize,
+              defectCount: Number(labEditForm.defectCount),
+              cupScore: Number(labEditForm.cupScore),
+              gradeConfirmed: labEditForm.gradeConfirmed,
+            });
+            if (!parsed.success) {
+              setError(parsed.error.issues.map((i) => i.message).join("; "));
+              return;
+            }
+            if (editing) {
+              const r = updateLabResultRecord(editing.id, parsed.data);
+              if (!r.ok) setError(r.message);
+              else goToState("lab_result");
+            } else {
+              const r = createLabResultRecord(parsed.data);
+              if (!r.ok) setError(r.message);
+              else goToState("dashboard");
+            }
+          }}
+        >
+          Save
+        </Button>
+        {editing && editing.status === "pending" ? (
+          <div className="space-y-2">
+            <Button
+              type="button"
+              className="w-full bg-emerald-700 text-white hover:bg-emerald-800"
+              onClick={() => {
+                const r = finalizeLabResultRecord(editing.id, "approved");
+                if (r.ok) goToState("lab_queue");
+                else setError(r.message);
+              }}
+            >
+              Approve &amp; finalize (release to export)
+            </Button>
+            <Button
+              type="button"
+              className="w-full border border-red-300 bg-red-50 text-red-900 hover:bg-red-100"
+              onClick={() => {
+                const r = finalizeLabResultRecord(editing.id, "failed");
+                if (r.ok) goToState("lab_queue");
+                else setError(r.message);
+              }}
+            >
+              Fail &amp; finalize (block export)
+            </Button>
+          </div>
+        ) : null}
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "aggregator_receive" && primaryRole === "aggregator" && data) {
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">Receive lot</h1>
+        <p className="text-sm text-zinc-600">
+          Lots appear here after a farmer pick is validated (in stock, verified) and still held by the prior
+          custodian. Recording receive moves custody to you.
+        </p>
+        {aggregatorReceiveCandidates.length ? (
+          <select
+            value={aggReceiveLotId}
+            onChange={(e) => setAggReceiveLotId(e.target.value)}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          >
+            {aggregatorReceiveCandidates.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.publicLotCode} · {l.weightKg} kg · {l.form}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+            No incoming lots in queue. Create a farmer pick, validate it as aggregator from the lot screen, then
+            return here.
+          </p>
+        )}
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!aggReceiveLotId}
+          onClick={() => {
+            const r = receiveLotAsAggregator(aggReceiveLotId);
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              goToState("dashboard");
+            }
+          }}
+        >
+          Record receive
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "aggregator_aggregate" && primaryRole === "aggregator" && data) {
+    const toggleAggParent = (id: string) => {
+      setAggSelectedParentIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      );
+    };
+    return (
+      <div className="mx-auto mt-10 w-full max-w-xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">Aggregate lots</h1>
+        <p className="text-sm text-zinc-600">
+          Select at least two lots already in your custody. Parent links are stored on the new aggregate lot.
+        </p>
+        <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+          {aggregatorAggregateCandidates.length ? (
+            aggregatorAggregateCandidates.map((l) => (
+              <label
+                key={l.id}
+                className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={aggSelectedParentIds.includes(l.id)}
+                  onChange={() => toggleAggParent(l.id)}
+                />
+                <span className="font-mono text-xs">{l.publicLotCode}</span>
+                <span className="text-zinc-500">
+                  {l.weightKg} kg · {l.form}
+                </span>
+              </label>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-600">No lots in your custody yet. Receive lots first.</p>
+          )}
+        </div>
+        <input
+          value={aggWeight}
+          onChange={(e) => setAggWeight(e.target.value)}
+          placeholder="Output weight kg"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const r = createAggregatedLot(aggSelectedParentIds, Number(aggWeight));
+            if (!r.ok) setError(r.message);
+            else {
+              setError(null);
+              setAggSelectedParentIds([]);
+              goToState("dashboard");
+            }
+          }}
+        >
+          Create aggregate
+        </Button>
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "admin_data_hub" && primaryRole === "admin" && data) {
+    const key = adminDataEntity ?? "lots";
+    const raw = data[key as keyof MockDataBundle];
+    const list = Array.isArray(raw)
+      ? (raw as { id: string }[]).filter((row) =>
+          adminSearch.trim()
+            ? JSON.stringify(row).toLowerCase().includes(adminSearch.toLowerCase())
+            : true,
+        )
+      : [];
+    return (
+      <div className="mx-auto mt-6 w-full max-w-3xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">Data management</h1>
+          <p className="mt-1 text-sm text-zinc-600">Search and archive runtime records (soft).</p>
+        </div>
+        <select
+          value={key}
+          onChange={(e) => setAdminDataEntity(e.target.value as keyof LiveDataBundle)}
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        >
+          {(
+            [
+              "farms",
+              "facilities",
+              "lots",
+              "inventoryEvents",
+              "rfqs",
+              "contracts",
+              "bankApprovals",
+              "labResults",
+            ] as const
+          ).map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
+        <input
+          value={adminSearch}
+          onChange={(e) => setAdminSearch(e.target.value)}
+          placeholder="Search in JSON..."
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <div className="max-h-80 space-y-2 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-3">
+          {list.slice(0, 40).map((row: { id: string }) => (
+            <div key={row.id} className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 text-xs">
+              <span className="font-mono text-zinc-800">{row.id}</span>
+              <Button
+                type="button"
+                className="h-7 border border-zinc-200 bg-white px-2 text-xs text-zinc-900 hover:bg-zinc-100"
+                onClick={() => adminArchiveEntity(key, row.id)}
+              >
+                Archive
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  if (currentState === "admin_role_monitor") {
+    if (primaryRole !== "admin" || !data) {
+      return (
+        <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-red-300 bg-red-50 p-8 shadow-sm">
+          <h1 className="text-xl font-semibold text-red-800">Role Monitor Restricted</h1>
+          <p className="mt-2 text-sm text-red-700">Only admin users can access Role Monitor.</p>
+          <div className="mt-6">
+            <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
+              Back To Dashboard
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const selectedMonitorUser =
+      monitoredUsers.find((u) => u.id === monitorSelectedUserId) ?? filteredMonitoredUsers[0] ?? null;
+    const previewNamespace = selectedMonitorUser
+      ? `${selectedMonitorUser.id}-${monitorPreviewResetCounter}`
+      : `none-${monitorPreviewResetCounter}`;
+    const previewUrl = selectedMonitorUser
+      ? `/monitor-preview?ns=${encodeURIComponent(previewNamespace)}&email=${encodeURIComponent(
+          selectedMonitorUser.email,
+        )}&role=${encodeURIComponent(selectedMonitorUser.primaryRole)}&userId=${encodeURIComponent(
+          selectedMonitorUser.id,
+        )}&autoLogin=${monitorAutoLogin ? "1" : "0"}`
+      : `/monitor-preview?ns=${encodeURIComponent(previewNamespace)}`;
+
+    return (
+      <div className="mx-auto mt-6 w-full max-w-6xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">Role Monitor</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Observe role experiences in an isolated embedded session while staying logged in as admin.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+          <aside className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <input
+              value={monitorSearch}
+              onChange={(e) => setMonitorSearch(e.target.value)}
+              placeholder="Search role / user / email"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none focus:border-zinc-400"
+            />
+            <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
+              {filteredMonitoredUsers.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => setMonitorSelectedUserId(u.id)}
+                  className={`w-full rounded-xl border p-3 text-left transition ${
+                    selectedMonitorUser?.id === u.id
+                      ? "border-zinc-900 bg-zinc-100"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50"
+                  }`}
+                >
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">{u.primaryRole}</p>
+                  <p className="mt-1 text-sm font-semibold text-zinc-900">{u.fullName}</p>
+                  <p className="text-xs text-zinc-600">{u.email}</p>
+                </button>
+              ))}
+              {!filteredMonitoredUsers.length ? (
+                <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-4 text-sm text-zinc-600">
+                  No users match your search.
+                </p>
+              ) : null}
+            </div>
+          </aside>
+
+          <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">
+                  {selectedMonitorUser
+                    ? `${selectedMonitorUser.fullName} · ${selectedMonitorUser.primaryRole}`
+                    : "No preview target selected"}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  This preview runs as an isolated monitored session.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                  onClick={() => setMonitorPreviewReload((x) => x + 1)}
+                >
+                  Reload preview
+                </Button>
+                <Button
+                  type="button"
+                  className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                  onClick={() => {
+                    setMonitorPreviewResetCounter((x) => x + 1);
+                    setMonitorPreviewReload((x) => x + 1);
+                  }}
+                >
+                  Reset preview session
+                </Button>
+                <Button
+                  type="button"
+                  className="border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                  onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+                >
+                  Open in tab
+                </Button>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={monitorAutoLogin}
+                onChange={(e) => setMonitorAutoLogin(e.target.checked)}
+              />
+              Auto-login selected preview user
+            </label>
+
+            <div className="h-[70vh] overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+              {selectedMonitorUser ? (
+                <iframe
+                  key={`${previewUrl}|${monitorPreviewReload}`}
+                  src={previewUrl}
+                  title={`Role monitor preview ${selectedMonitorUser.email}`}
+                  className="h-full w-full"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center px-4 text-sm text-zinc-500">
+                  Select a monitored role to open the preview.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+        <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
   if (currentState === "dashboard") {
     const hero = primaryRole ? roleHero[primaryRole] : null;
     return (
-      <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
+      <div className="mx-auto mt-6 w-full max-w-5xl space-y-4">
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h1 className="text-lg font-semibold text-zinc-900">{hero?.title ?? "Role Workspace"}</h1>
           <p className="mt-1 text-sm text-zinc-600">{hero?.subtitle ?? "Role landing initialized."}</p>
           <p className="mt-1 text-xs text-zinc-500">Signed in as {userId}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {summaryCards.map((card) => (
-            <div key={card.label} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {kpiCards.map((card) => (
+            <div key={card.label} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <p className="text-xs text-zinc-500">{card.label}</p>
-              <p className="mt-1 text-base font-semibold text-zinc-900">{String(card.value)}</p>
+              <p className="mt-2 text-xl font-semibold text-zinc-900">{String(card.value)}</p>
             </div>
           ))}
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">{chartSpec?.title ?? "Chart"}</p>
-          <div className="mt-3 h-56">
+          <p className="mt-1 text-xs text-zinc-500">
+            Legend and axis labels describe each series. KPI cards above reflect live persisted state; chart tiles may
+            use seed trend shapes for layout reference.
+          </p>
+          <div className="mt-3 h-64 sm:h-72">
             {chartSpec ? <RoleChart chart={chartSpec} /> : null}
           </div>
         </div>
@@ -439,6 +1943,97 @@ export function RootScreenController() {
           </div>
         </details>
 
+        {primaryRole === "farmer" ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Field &amp; lot actions</summary>
+            <div className="mt-3 space-y-2">
+              <Button type="button" className="w-full" onClick={() => goToState("farmer_fields")}>
+                Manage fields
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => goToState("farmer_my_lots")}
+              >
+                My lots
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
+        {primaryRole === "aggregator" ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Intake actions</summary>
+            <div className="mt-3 space-y-2">
+              <Button type="button" className="w-full" onClick={() => goToState("aggregator_receive")}>
+                Receive lot
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => goToState("aggregator_aggregate")}
+              >
+                Aggregate lots
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
+        {primaryRole === "admin" ? (
+          <div className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <Button type="button" className="w-full" onClick={() => goToState("admin_data_hub")}>
+              Open data management
+            </Button>
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => goToState("admin_role_monitor")}
+            >
+              Open Role Monitor
+            </Button>
+          </div>
+        ) : null}
+
+        {primaryRole === "importer" && permissions.includes("view_lot_lineage") ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Traceability</summary>
+            <div className="mt-3">
+              <Button type="button" className="w-full" onClick={() => goToState("importer_lot_trace")}>
+                Look up lot by public code
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
+        {primaryRole === "exporter" ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Offer actions</summary>
+            <div className="mt-3">
+              <Button type="button" className="w-full" onClick={() => goToState("exporter_offer_new")}>
+                New offer draft
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
+        {primaryRole === "lab_officer" ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lab actions</summary>
+            <div className="mt-3 space-y-2">
+              <Button type="button" className="w-full" onClick={() => goToState("lab_queue")}>
+                Open lab intake queue
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => openLabResultEdit(null)}
+              >
+                New lab result (select lot)
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
         <div>
           <Button
             type="button"
@@ -446,17 +2041,20 @@ export function RootScreenController() {
             onClick={() => {
               if (primaryRole === "admin") {
                 goToState("admin_decoder");
-              } else if (
-                primaryRole === "importer" ||
-                primaryRole === "bank_officer" ||
-                primaryRole === "lab_officer"
-              ) {
+              } else if (primaryRole === "lab_officer") {
+                goToState("lab_queue");
+              } else if (primaryRole === "importer" || primaryRole === "bank_officer") {
                 startTradeFlow();
               } else {
+                if (primaryRole === "farmer") {
+                  clearSelectedLot();
+                  goToState("lot_detail");
+                  return;
+                }
                 if (primaryRole === "exporter") {
-                  const readyLot =
-                    (data?.lots ?? []).find((lot) => lot.status === "ready_for_export") ??
-                    (data?.lots ?? []).find((lot) => lot.status === "contract_reserved");
+                  const readyLot = (data?.lots ?? []).find((l) =>
+                    isExportTradeEligibleLot(l, data?.labResults ?? []),
+                  );
                   if (readyLot) openLotDetail(readyLot.id);
                   else goToState("lot_detail");
                   return;
@@ -474,8 +2072,17 @@ export function RootScreenController() {
                   return;
                 }
                 if (primaryRole === "transporter") {
-                  const tripLot = (data?.lots ?? []).find((lot) => lot.status === "in_stock");
-                  if (tripLot) openLotDetail(tripLot.id);
+                  if (!data?.lots || !linkedActorId) {
+                    goToState("lot_detail");
+                    return;
+                  }
+                  const m = new Map<string, (typeof data.lots)[0]>();
+                  for (const l of data.lots.filter((x) => canTransporterAcceptLot(x, linkedActorId))) m.set(l.id, l);
+                  for (const l of data.lots.filter((x) => canTransporterHandoverToLab(x, linkedActorId))) {
+                    m.set(l.id, l);
+                  }
+                  const opts = [...m.values()];
+                  if (opts[0]) openLotDetail(opts[0].id);
                   else goToState("lot_detail");
                   return;
                 }
@@ -559,6 +2166,13 @@ export function RootScreenController() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h1 className="text-lg font-semibold text-zinc-900">RFQs</h1>
           <p className="mt-1 text-sm text-zinc-600">Importer opens RFQ to begin trade execution.</p>
+          {primaryRole === "importer" ? (
+            <div className="mt-4">
+              <Button type="button" className="w-full" onClick={() => goToState("importer_rfq_new")}>
+                New RFQ draft
+              </Button>
+            </div>
+          ) : null}
         </div>
         {(data?.rfqs ?? []).length ? (
           (data?.rfqs ?? []).map((rfq) => (
@@ -610,7 +2224,7 @@ export function RootScreenController() {
         <span className="mt-3 inline-block rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
           {selectedRfq?.status ?? "open"}
         </span>
-        <div className="mt-6">
+        <div className="mt-6 space-y-2">
           <Button
             type="button"
             className="w-full"
@@ -620,6 +2234,13 @@ export function RootScreenController() {
           >
             {nextOffer ? "Continue To Offer" : "No Offer Linked"}
           </Button>
+          {primaryRole === "importer" &&
+          selectedRfq.buyerActorId === linkedActorId &&
+          selectedRfq.status === "draft" ? (
+            <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => openRfqEdit(selectedRfq.id)}>
+              Edit draft
+            </Button>
+          ) : null}
         </div>
       </div>
     );
@@ -654,7 +2275,7 @@ export function RootScreenController() {
         <span className="mt-3 inline-block rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
           {selectedOffer.status}
         </span>
-        <div className="mt-6">
+        <div className="mt-6 space-y-2">
           <Button
             type="button"
             className="w-full"
@@ -664,6 +2285,20 @@ export function RootScreenController() {
           >
             {linkedLot ? "Open Linked Lot" : "No Linked Lot"}
           </Button>
+          {linkedLot && primaryRole === "importer" && permissions.includes("view_lot_lineage") ? (
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => {
+                setImporterTraceCode(linkedLot.publicLotCode);
+                setImporterTraceStatus("idle");
+                setImporterDecodedLotId(null);
+                goToState("importer_lot_trace");
+              }}
+            >
+              Trace this lot by code
+            </Button>
+          ) : null}
         </div>
       </div>
     );
@@ -674,9 +2309,71 @@ export function RootScreenController() {
       return <ScreenCard title="Lot Detail" description="Mock data unavailable." />;
     }
 
-    const lot = selectedLot ?? data.lots[0] ?? null;
+    const lot =
+      selectedLot ?? (primaryRole === "farmer" ? null : lotDetailDefaultLot) ?? null;
+
+    if (primaryRole === "farmer" && !lot) {
+      return (
+        <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+          <h1 className="text-xl font-semibold text-zinc-900">Create lot</h1>
+          <p className="mt-2 text-sm text-zinc-600">Provisional cherry lot from one of your fields.</p>
+          <div className="mt-6 space-y-4">
+            <select
+              value={pickFarmId}
+              onChange={(e) => setPickFarmId(e.target.value)}
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            >
+              <option value="">Select field</option>
+              {myFarms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.name}
+                </option>
+              ))}
+            </select>
+            <input
+              inputMode="decimal"
+              value={pickWeightKg}
+              onChange={(e) => setPickWeightKg(e.target.value)}
+              placeholder="Weight (kg)"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            />
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                const result = createMockPickEvent(pickFarmId, Number(pickWeightKg));
+                if (!result.ok) {
+                  setError(result.message);
+                  return;
+                }
+                setError(null);
+                if (result.lotId) openLotDetail(result.lotId);
+                else goToState("farmer_my_lots");
+              }}
+            >
+              Create provisional lot
+            </Button>
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => goToState("dashboard")}
+            >
+              Back to dashboard
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     if (!lot) {
       return <ScreenCard title="Lot Detail" description="No lot available to render." />;
+    }
+
+    if (primaryRole === "farmer" && lot.originActorId !== linkedActorId) {
+      return (
+        <ScreenCard title="Not your lot" description="You can only open lots you originated." />
+      );
     }
 
     if (selectedOffer) {
@@ -702,59 +2399,32 @@ export function RootScreenController() {
       );
     }
 
-    if (primaryRole === "farmer") {
-      return (
-        <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-xl font-semibold text-zinc-900">Record Pick</h1>
-          <p className="mt-2 text-sm text-zinc-600">Create a provisional pick event for a farm lot.</p>
-          <div className="mt-6 space-y-4">
-            <select
-              value={pickFarmId}
-              onChange={(e) => setPickFarmId(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            >
-              <option value="">Select farm</option>
-              {data.farms.map((farm) => (
-                <option key={farm.id} value={farm.id}>
-                  {farm.name}
-                </option>
-              ))}
-            </select>
-            <input
-              inputMode="decimal"
-              value={pickWeightKg}
-              onChange={(e) => setPickWeightKg(e.target.value)}
-              placeholder="Weight (kg)"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            />
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                const result = createMockPickEvent(pickFarmId, Number(pickWeightKg));
-                if (!result.ok) {
-                  setError(result.message);
-                  return;
-                }
-                setError(null);
-                goToState("contract_detail");
-              }}
-            >
-              Create Provisional Event
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
     if (primaryRole === "aggregator") {
-      const pendingLot = lot.status === "pending_validation"
-        ? lot
-        : data.lots.find((item) => item.status === "pending_validation") ?? lot;
+      const pendingLots = data.lots.filter((item) => item.status === "pending_validation");
+      const pendingLot =
+        pendingLots.find((item) => item.id === lot.id) ??
+        pendingLots[0] ??
+        lot;
       return (
         <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-zinc-900">Validate Lot</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Confirms farmer-reported pick weight. After validation the lot is in stock and can appear in your receive
+            queue while the prior custodian still holds it.
+          </p>
+          {pendingLots.length > 1 ? (
+            <select
+              value={pendingLot.id}
+              onChange={(e) => openLotDetail(e.target.value)}
+              className="mt-4 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            >
+              {pendingLots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.publicLotCode} · {l.weightKg} kg reported
+                </option>
+              ))}
+            </select>
+          ) : null}
           <p className="mt-2 text-sm text-zinc-600">Lot: {pendingLot.publicLotCode}</p>
           <p className="mt-1 text-sm text-zinc-600">Reported Weight: {pendingLot.weightKg} kg</p>
           <div className="mt-6 space-y-4">
@@ -769,6 +2439,7 @@ export function RootScreenController() {
             <Button
               type="button"
               className="w-full"
+              disabled={pendingLot.status !== "pending_validation"}
               onClick={() => {
                 const result = validatePendingLot(pendingLot.id, Number(validateWeightKg));
                 if (!result.ok) {
@@ -776,7 +2447,7 @@ export function RootScreenController() {
                   return;
                 }
                 setError(null);
-                goToState("contract_detail");
+                goToState("dashboard");
               }}
             >
               Mark Validated
@@ -787,7 +2458,10 @@ export function RootScreenController() {
     }
 
     if (primaryRole === "processor") {
-      const processLot = lot.status === "in_stock" ? lot : data.lots.find((item) => item.status === "in_stock") ?? lot;
+      const processLot =
+        processorIntakeLots.find((item) => item.id === processorLotPick) ??
+        processorIntakeLots[0] ??
+        lot;
       const supportedLossTypes = [
         "pulp",
         "mucilage",
@@ -796,6 +2470,7 @@ export function RootScreenController() {
         "husk",
         "defects",
         "samples",
+        "other",
       ];
       const parsedOutput = Number(processOutputKg || 0);
       const parsedLosses = lossRows
@@ -811,6 +2486,22 @@ export function RootScreenController() {
       return (
         <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-zinc-900">Process Lot</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Only lots in your custody and in stock appear here (live chain from aggregator intake).
+          </p>
+          {processorIntakeLots.length > 1 ? (
+            <select
+              value={processorLotPick}
+              onChange={(e) => setProcessorLotPick(e.target.value)}
+              className="mt-4 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            >
+              {processorIntakeLots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.publicLotCode} · {l.weightKg} kg · {l.form}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <p className="mt-2 text-sm text-zinc-600">Lot: {processLot.publicLotCode} ({processLot.weightKg} kg input)</p>
           <div className="mt-6 space-y-4">
             <input
@@ -874,6 +2565,47 @@ export function RootScreenController() {
               </div>
             </details>
 
+            <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <summary className="cursor-pointer text-sm font-medium text-zinc-900">Process context</summary>
+              <div className="mt-3 space-y-2">
+                <select
+                  value={processType}
+                  onChange={(e) =>
+                    setProcessType(e.target.value as "PROCESS_PULP_AND_WASH" | "PROCESS_HULL_AND_GRADE")
+                  }
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="PROCESS_PULP_AND_WASH">Pulp and wash</option>
+                  <option value="PROCESS_HULL_AND_GRADE">Hull and grade</option>
+                </select>
+                <select
+                  value={processFacilityId}
+                  onChange={(e) => setProcessFacilityId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Facility (optional)</option>
+                  {data.facilities.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={processGrade}
+                  onChange={(e) => setProcessGrade(e.target.value)}
+                  placeholder="Output grade (optional)"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={processNotes}
+                  onChange={(e) => setProcessNotes(e.target.value)}
+                  placeholder="Process notes"
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </details>
+
             <div className="rounded-xl bg-zinc-50 p-3 text-sm text-zinc-700">
               <p>Mass Balance Preview</p>
               <p>Input: {massBalancePreview.input} kg</p>
@@ -886,7 +2618,12 @@ export function RootScreenController() {
               type="button"
               className="w-full"
               onClick={() => {
-                const result = processLotWithLosses(processLot.id, Number(processOutputKg), parsedLosses);
+                const result = processLotWithLosses(processLot.id, Number(processOutputKg), parsedLosses, {
+                  qualityGrade: processGrade.trim() || null,
+                  notes: processNotes.trim() || undefined,
+                  facilityId: processFacilityId || null,
+                  processType,
+                });
                 if (!result.ok) {
                   setError(result.message);
                   return;
@@ -894,7 +2631,10 @@ export function RootScreenController() {
                 setError(null);
                 setLossRows([{ type: "pulp", weightKg: "" }]);
                 setProcessOutputKg("");
-                goToState("contract_detail");
+                setProcessNotes("");
+                setProcessGrade("");
+                setProcessFacilityId("");
+                goToState("dashboard");
               }}
             >
               Confirm Process
@@ -905,17 +2645,41 @@ export function RootScreenController() {
     }
 
     if (primaryRole === "transporter") {
-      const tripLot = lot.status === "in_stock" ? lot : data.lots.find((item) => item.status === "in_stock") ?? lot;
+      const tripLot =
+        transporterLotOptions.find((item) => item.id === transporterLotPick) ??
+        transporterLotOptions[0] ??
+        lot;
+      const canPickup = linkedActorId ? canTransporterAcceptLot(tripLot, linkedActorId) : false;
+      const canHandover = linkedActorId ? canTransporterHandoverToLab(tripLot, linkedActorId) : false;
       return (
         <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-xl font-semibold text-zinc-900">Accept Custody</h1>
-          <p className="mt-2 text-sm text-zinc-600">Trip Lot: {tripLot.publicLotCode}</p>
+          <h1 className="text-xl font-semibold text-zinc-900">Transport</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Pick up processed lots from the processor (awaiting transport), move in transit, then hand custody to the lab
+            before export.
+          </p>
+          {transporterLotOptions.length > 1 ? (
+            <select
+              value={transporterLotPick}
+              onChange={(e) => setTransporterLotPick(e.target.value)}
+              className="mt-4 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            >
+              {transporterLotOptions.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.publicLotCode} · {l.status} · {l.weightKg} kg
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <p className="mt-2 text-sm text-zinc-600">Selected: {tripLot.publicLotCode}</p>
           <p className="mt-1 text-sm text-zinc-600">Weight: {tripLot.weightKg} kg</p>
+          <p className="mt-1 text-xs text-zinc-500">Lab gate: {normalizeLotLabStatus(tripLot)}</p>
           {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-          <div className="mt-6">
+          <div className="mt-6 space-y-2">
             <Button
               type="button"
               className="w-full"
+              disabled={!canPickup}
               onClick={() => {
                 const result = acceptTransportCustody(tripLot.id);
                 if (!result.ok) {
@@ -923,18 +2687,101 @@ export function RootScreenController() {
                   return;
                 }
                 setError(null);
-                goToState("contract_detail");
+                goToState("dashboard");
               }}
             >
-              Confirm Custody
+              Accept custody (pickup)
+            </Button>
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              disabled={!canHandover}
+              onClick={() => {
+                const result = handoverCustodyToLab(tripLot.id);
+                if (!result.ok) {
+                  setError(result.message);
+                  return;
+                }
+                setError(null);
+                goToState("dashboard");
+              }}
+            >
+              Hand over to lab
             </Button>
           </div>
         </div>
       );
     }
 
+    if (primaryRole === "lab_officer") {
+      const queueLot =
+        selectedLot && labIntakeLots.some((l) => l.id === selectedLot.id)
+          ? selectedLot
+          : labIntakeLots[0] ?? lot;
+      const pendingForLot = data.labResults.find(
+        (r) => r.lotId === queueLot.id && r.labActorId === linkedActorId && r.status === "pending",
+      );
+      return (
+        <div className="mx-auto mt-10 w-full max-w-xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+          <h1 className="text-xl font-semibold text-zinc-900">Lab intake</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Lots appear after the transporter hands them to the lab. Record a draft result, then approve or fail.
+          </p>
+          {labIntakeLots.length > 1 ? (
+            <select
+              value={queueLot.id}
+              onChange={(e) => openLotDetail(e.target.value)}
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            >
+              {labIntakeLots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.publicLotCode} · {l.weightKg} kg
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <p className="text-sm text-zinc-600">Lot: {queueLot.publicLotCode}</p>
+          {pendingForLot ? (
+            <p className="text-xs text-amber-700">Draft result {pendingForLot.id} — open edit to finalize.</p>
+          ) : (
+            <Button type="button" className="w-full" onClick={() => openLabResultEdit(null)}>
+              Record lab result for this lot
+            </Button>
+          )}
+          {pendingForLot ? (
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => openLabResultEdit(pendingForLot.id)}
+            >
+              Continue draft result
+            </Button>
+          ) : null}
+          <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+            Back to dashboard
+          </Button>
+        </div>
+      );
+    }
+
     if (primaryRole === "exporter") {
+      if (!isExportTradeEligibleLot(lot, data.labResults)) {
+        return (
+          <div className="mx-auto mt-10 w-full max-w-xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+            <h1 className="text-xl font-semibold text-zinc-900">Not export-eligible</h1>
+            <p className="text-sm text-zinc-600">
+              Exporter trade actions require a lab-cleared lot (or legacy approved lab result) in export-ready status.
+              Complete transport → lab → approval first.
+            </p>
+            <p className="text-xs text-zinc-500">Lab gate: {normalizeLotLabStatus(lot)}</p>
+            <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
+              Back to dashboard
+            </Button>
+          </div>
+        );
+      }
       const linkedOffer = data.offers.find((offer) => offer.linkedLotIds.includes(lot.id)) ?? null;
+      const exporterLab = labResultSummaryForLot(lot.id, data.labResults);
       return (
         <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
           <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -944,6 +2791,36 @@ export function RootScreenController() {
               <p>Status: {lot.status}</p>
               <p>Form: {lot.form}</p>
               <p>Weight: {lot.weightKg} kg</p>
+              <p>Lab gate: {normalizeLotLabStatus(lot)}</p>
+              {exporterLab ? (
+                <p>
+                  Lab result: {exporterLab.status} · cup {exporterLab.cupScore} · {exporterLab.gradeConfirmed}
+                </p>
+              ) : null}
+              {lot.exportReservationStatus ? (
+                <p>Reservation: {lot.exportReservationStatus}</p>
+              ) : null}
+            </div>
+          </details>
+          <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Reservation</summary>
+            <div className="mt-3 space-y-2">
+              <input
+                value={reservationLabel}
+                onChange={(e) => setReservationLabel(e.target.value)}
+                placeholder="Reservation label (e.g. buyer hold)"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              />
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  updateLotExportReservation(lot.id, reservationLabel.trim() || null);
+                  setReservationLabel("");
+                }}
+              >
+                Update reservation
+              </Button>
             </div>
           </details>
           <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -993,6 +2870,7 @@ export function RootScreenController() {
     const processingEvents = timelineEvents.filter((event) =>
       event.type.includes("PROCESS") || Array.isArray(event.losses),
     );
+    const labForLot = labResultSummaryForLot(lot.id, data.labResults);
 
     return (
       <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
@@ -1013,6 +2891,25 @@ export function RootScreenController() {
             <p>Form: {lot.form}</p>
             <p>Status: {lot.status}</p>
             <p>Weight: {lot.weightKg} kg</p>
+            <p>Lab gate: {normalizeLotLabStatus(lot)}</p>
+          </div>
+        </details>
+
+        <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lab verification</summary>
+          <div className="mt-3 space-y-1 text-sm text-zinc-600">
+            {labForLot ? (
+              <>
+                <p>Sample: {labForLot.sampleCode}</p>
+                <p>Status: {labForLot.status}</p>
+                <p>
+                  Cup score: {labForLot.cupScore} · Grade: {labForLot.gradeConfirmed} · Moisture:{" "}
+                  {labForLot.moisturePercent}%
+                </p>
+              </>
+            ) : (
+              <p>No lab result linked to this lot id.</p>
+            )}
           </div>
         </details>
 
@@ -1143,6 +3040,68 @@ export function RootScreenController() {
           </div>
         </details>
 
+        {primaryRole === "farmer" &&
+        lot.integrityStatus === "provisional" &&
+        lot.originActorId === linkedActorId ? (
+          <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Edit provisional lot</summary>
+            <div className="mt-3 space-y-2">
+              <input
+                inputMode="decimal"
+                value={farmerEditWeight !== "" ? farmerEditWeight : String(lot.weightKg)}
+                onChange={(e) => setFarmerEditWeight(e.target.value)}
+                placeholder="Weight kg"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              />
+              <textarea
+                value={farmerEditNotes !== "" ? farmerEditNotes : (lot.notes ?? "")}
+                onChange={(e) => setFarmerEditNotes(e.target.value)}
+                placeholder="Notes"
+                rows={2}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              />
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  const w = Number(farmerEditWeight || lot.weightKg);
+                  updateProvisionalLot(lot.id, {
+                    weightKg: w,
+                    notes: farmerEditNotes || lot.notes,
+                  });
+                }}
+              >
+                Save changes
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => archiveFarmerLot(lot.id)}
+              >
+                Cancel / archive lot
+              </Button>
+            </div>
+          </details>
+        ) : null}
+
+        {primaryRole === "admin" ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-zinc-900">Admin lot controls</p>
+            <div className="mt-3 space-y-2">
+              <Button type="button" className="w-full" onClick={() => quarantineLot(lot.id, "Admin quarantine")}>
+                Quarantine lot
+              </Button>
+              <Button
+                type="button"
+                className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                onClick={() => releaseLotQuarantine(lot.id)}
+              >
+                Release quarantine
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
           Back To Dashboard
         </Button>
@@ -1211,12 +3170,17 @@ export function RootScreenController() {
             <p>Variance: {lastMassBalance.variance} kg</p>
           </div>
         ) : null}
+        {lastOutputLotId ? (
+          <p className="mt-3 text-sm text-zinc-600">
+            Output lot created: <span className="font-mono">{lastOutputLotId}</span>
+          </p>
+        ) : null}
         <div className="mt-6">
           <Button
             type="button"
             className="w-full"
             onClick={() => {
-              setOperationResult(null, null);
+              setOperationResult(null, null, null);
               goToState("dashboard");
             }}
           >
@@ -1255,7 +3219,7 @@ export function RootScreenController() {
         <span className="mt-3 inline-block rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
           {selectedBankApproval.status}
         </span>
-        <div className="mt-6">
+        <div className="mt-6 space-y-2">
           <Button
             type="button"
             className="w-full"
@@ -1265,6 +3229,15 @@ export function RootScreenController() {
           >
             {nextLab ? "Continue To Lab Result" : "No Lab Result Linked"}
           </Button>
+          {primaryRole === "bank_officer" && selectedBankApproval.bankActorId === linkedActorId ? (
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => openBankApprovalEdit(selectedBankApproval.id)}
+            >
+              Edit approval metadata
+            </Button>
+          ) : null}
         </div>
       </div>
     );
@@ -1294,10 +3267,19 @@ export function RootScreenController() {
         <span className="mt-3 inline-block rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
           {selectedLabResult.status}
         </span>
-        <div className="mt-6">
+        <div className="mt-6 space-y-2">
           <Button type="button" className="w-full" onClick={() => goToState("trade_ready")}>
             Continue To Readiness
           </Button>
+          {primaryRole === "lab_officer" && selectedLabResult.labActorId === linkedActorId ? (
+            <Button
+              type="button"
+              className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+              onClick={() => openLabResultEdit(selectedLabResult.id)}
+            >
+              Edit or finalize result
+            </Button>
+          ) : null}
         </div>
       </div>
     );
@@ -1322,6 +3304,213 @@ export function RootScreenController() {
     );
   }
 
+  if (currentState === "importer_lot_trace" && data) {
+    if (!permissions.includes("view_lot_lineage")) {
+      return (
+        <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-red-300 bg-red-50 p-8 shadow-sm">
+          <h1 className="text-xl font-semibold text-red-800">Trace lookup restricted</h1>
+          <p className="mt-2 text-sm text-red-700">Your role is not authorized for lot lineage lookup.</p>
+          <div className="mt-6">
+            <Button type="button" className="w-full" onClick={() => goToState("dashboard")}>
+              Back to dashboard
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const importerDecodedLot =
+      importerDecodedLotId != null ? (data.lots.find((l) => l.id === importerDecodedLotId) ?? null) : null;
+    const importerLineage = importerDecodedLot ? buildLineageNodes(importerDecodedLot.id, data.lots) : [];
+    const importerSourceLots = importerLineage.filter((node) => node.lot.farmId);
+    const importerCustody =
+      importerDecodedLot != null
+        ? data.inventoryEvents
+            .filter(
+              (event) =>
+                event.lotId === importerDecodedLot.id && event.fromActorId && event.toActorId,
+            )
+            .map((event) => {
+              const fromN =
+                data.actors.find((a) => a.id === event.fromActorId)?.displayName ?? event.fromActorId;
+              const toN =
+                data.actors.find((a) => a.id === event.toActorId)?.displayName ?? event.toActorId;
+              return `${fromN} → ${toN} (${event.type})`;
+            })
+        : [];
+    const importerOwnership =
+      importerDecodedLot != null
+        ? data.inventoryEvents
+            .filter((event) => event.lotId === importerDecodedLot.id && event.type === "TRANSFER_OWNERSHIP")
+            .map((event) => {
+              const fromN =
+                data.actors.find((a) => a.id === event.fromActorId)?.displayName ?? event.fromActorId;
+              const toN =
+                data.actors.find((a) => a.id === event.toActorId)?.displayName ?? event.toActorId;
+              return `${fromN} → ${toN}`;
+            })
+        : [];
+    const tradeLinks =
+      importerDecodedLot != null
+        ? data.offers.filter((o) => o.linkedLotIds.includes(importerDecodedLot.id))
+        : [];
+    const importerLabSummary =
+      importerDecodedLot != null ? labResultSummaryForLot(importerDecodedLot.id, data.labResults) : null;
+
+    return (
+      <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-zinc-900">Authorized lot traceability</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Enter the public lot code exactly as printed. Resolution uses the code map and stored records — not pattern
+            parsing on the code string.
+          </p>
+          <div className="mt-4 space-y-3">
+            <input
+              value={importerTraceCode}
+              onChange={(e) => setImporterTraceCode(e.target.value)}
+              placeholder="Public lot code"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none focus:border-zinc-400"
+            />
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                setImporterTraceStatus("loading");
+                setImporterDecodedLotId(null);
+                setTimeout(() => {
+                  const id = resolveLotIdFromPublicCode(importerTraceCode, data.lotCodeMap, data.lots);
+                  if (!id) {
+                    setImporterTraceStatus("not_found");
+                    setImporterDecodedLotId(null);
+                    return;
+                  }
+                  setImporterDecodedLotId(id);
+                  setImporterTraceStatus("success");
+                }, 200);
+              }}
+            >
+              Resolve lot
+            </Button>
+          </div>
+        </div>
+
+        {importerTraceStatus === "idle" ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-zinc-500">Enter a code linked to an offer or contract you are pursuing.</p>
+          </div>
+        ) : null}
+        {importerTraceStatus === "loading" ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-zinc-600">Resolving against live lot code map…</p>
+          </div>
+        ) : null}
+        {importerTraceStatus === "not_found" ? (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm">
+            <p className="text-sm font-semibold text-amber-800">Unknown code</p>
+            <p className="mt-1 text-sm text-amber-700">No mapped lot matches this public code in local data.</p>
+          </div>
+        ) : null}
+
+        {importerTraceStatus === "success" && importerDecodedLot ? (
+          <div className="space-y-4">
+            <details open className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lot summary</summary>
+              <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                <p>Public code: {importerDecodedLot.publicLotCode}</p>
+                <p>Status: {importerDecodedLot.status}</p>
+                <p>
+                  Form: {importerDecodedLot.form} · {importerDecodedLot.weightKg} kg
+                </p>
+                <p>Commodity: {importerDecodedLot.commodity}</p>
+                <p>Lab gate: {normalizeLotLabStatus(importerDecodedLot)}</p>
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lab result summary</summary>
+              <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                {importerLabSummary ? (
+                  <>
+                    <p>Sample: {importerLabSummary.sampleCode}</p>
+                    <p>Result status: {importerLabSummary.status}</p>
+                    <p>
+                      Cup score: {importerLabSummary.cupScore} · Grade: {importerLabSummary.gradeConfirmed} · Moisture:{" "}
+                      {importerLabSummary.moisturePercent}%
+                    </p>
+                  </>
+                ) : (
+                  <p>No lab result record is linked to this lot in local data.</p>
+                )}
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Source farms & farmers</summary>
+              <div className="mt-3 space-y-2">
+                {importerSourceLots.length ? (
+                  importerSourceLots.map((node) => {
+                    const farm = data.farms.find((row) => row.id === node.lot.farmId);
+                    const farmer = data.actors.find((row) => row.id === node.lot.originActorId);
+                    return (
+                      <div key={node.lot.id} className="rounded-xl bg-zinc-50 p-3 text-sm text-zinc-600">
+                        <p>Farm: {farm?.name ?? "Unknown"}</p>
+                        <p>Farmer: {farmer?.displayName ?? "Unknown"}</p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-zinc-500">No direct farm pick in lineage (may be aggregated/processed).</p>
+                )}
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lineage</summary>
+              <div className="mt-3">
+                <LineageTree lotId={importerDecodedLot.id} lots={data.lots} level={0} />
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Custody chain</summary>
+              <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                {importerCustody.length ? importerCustody.map((line) => <p key={line}>{line}</p>) : (
+                  <p>No custody handoffs recorded for this lot id.</p>
+                )}
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Ownership chain</summary>
+              <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                {importerOwnership.length ? importerOwnership.map((line) => <p key={line}>{line}</p>) : (
+                  <p>No explicit ownership transfer events.</p>
+                )}
+              </div>
+            </details>
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Linked trade objects</summary>
+              <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                {tradeLinks.length ? (
+                  tradeLinks.map((o) => (
+                    <p key={o.id}>
+                      Offer {o.id} · {o.offeredQuantityKg} kg @ {o.pricePerKgUsd} {o.currency}
+                    </p>
+                  ))
+                ) : (
+                  <p>No offers reference this lot in local data.</p>
+                )}
+              </div>
+            </details>
+            <Button type="button" className="w-full" onClick={() => openLotDetail(importerDecodedLot.id)}>
+              Open full lot record
+            </Button>
+          </div>
+        ) : null}
+
+        <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
   if (currentState === "admin_decoder") {
     if (primaryRole !== "admin") {
       return (
@@ -1337,22 +3526,38 @@ export function RootScreenController() {
       );
     }
 
-    const decodedMap = (data?.lotCodeMap ?? []).find((row) => row.publicLotCode === decoderCode.trim());
-    const decodedLot = decodedMap ? data?.lots.find((lot) => lot.id === decodedMap.lotId) ?? null : null;
+    const decodedLot =
+      decodedLotId != null ? (data?.lots.find((lot) => lot.id === decodedLotId) ?? null) : null;
     const decodedLineage = decodedLot && data ? buildLineageNodes(decodedLot.id, data.lots) : [];
     const sourceLots = decodedLineage.filter((node) => node.lot.farmId);
     const custodyChain =
       decodedLot && data
         ? data.inventoryEvents
             .filter((event) => event.lotId === decodedLot.id && event.fromActorId && event.toActorId)
-            .map((event) => `${event.fromActorId} -> ${event.toActorId}`)
+            .map((event) => {
+              const fromN =
+                data.actors.find((a) => a.id === event.fromActorId)?.displayName ?? event.fromActorId;
+              const toN =
+                data.actors.find((a) => a.id === event.toActorId)?.displayName ?? event.toActorId;
+              return `${fromN} → ${toN}`;
+            })
         : [];
     const ownershipChain =
       decodedLot && data
         ? data.inventoryEvents
             .filter((event) => event.lotId === decodedLot.id && event.type === "TRANSFER_OWNERSHIP")
-            .map((event) => `${event.fromActorId} -> ${event.toActorId}`)
+            .map((event) => {
+              const fromN =
+                data.actors.find((a) => a.id === event.fromActorId)?.displayName ?? event.fromActorId;
+              const toN =
+                data.actors.find((a) => a.id === event.toActorId)?.displayName ?? event.toActorId;
+              return `${fromN} → ${toN}`;
+            })
         : [];
+    const decodedLabRecords =
+      decodedLot && data ? data.labResults.filter((r) => r.lotId === decodedLot.id) : [];
+    const decodedLabSummary =
+      decodedLot && data ? labResultSummaryForLot(decodedLot.id, data.labResults) : null;
 
     return (
       <div className="mx-auto mt-6 w-full max-w-2xl space-y-4">
@@ -1375,15 +3580,17 @@ export function RootScreenController() {
                 setDecoderStatus("loading");
                 setDecodedLotId(null);
                 setTimeout(() => {
-                  const map = (data?.lotCodeMap ?? []).find(
-                    (row) => row.publicLotCode === decoderCode.trim(),
+                  const lotId = resolveLotIdFromPublicCode(
+                    decoderCode,
+                    data?.lotCodeMap ?? [],
+                    data?.lots ?? [],
                   );
-                  if (!map) {
+                  if (!lotId) {
                     setDecoderStatus("not_found");
                     setDecodedLotId(null);
                     return;
                   }
-                  setDecodedLotId(map.lotId);
+                  setDecodedLotId(lotId);
                   setDecoderStatus("success");
                 }, 250);
               }}
@@ -1419,8 +3626,37 @@ export function RootScreenController() {
             <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Decoded Details</summary>
               <div className="mt-3 space-y-1 text-sm text-zinc-600">
+                <p>Public code: {decodedLot.publicLotCode}</p>
                 <p>internalUuid: {decodedLot.internalUuid}</p>
                 <p>traceKey: {decodedLot.traceKey}</p>
+                <p>Status: {decodedLot.status}</p>
+                <p>Lab gate (normalized): {normalizeLotLabStatus(decodedLot)}</p>
+              </div>
+            </details>
+
+            <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Lab linkage</summary>
+              <div className="mt-3 space-y-2 text-sm text-zinc-600">
+                {decodedLabRecords.length ? (
+                  decodedLabRecords.map((r) => (
+                    <div key={r.id} className="rounded-xl bg-zinc-50 p-3">
+                      <p className="font-medium text-zinc-800">Result id: {r.id}</p>
+                      <p>Lot id: {r.lotId}</p>
+                      <p>Lab actor: {r.labActorId}</p>
+                      <p>Sample: {r.sampleCode}</p>
+                      <p>Status: {r.status}</p>
+                      {r.contractId ? <p>Contract: {r.contractId}</p> : null}
+                    </div>
+                  ))
+                ) : (
+                  <p>No lab result rows reference this lot id.</p>
+                )}
+                {decodedLabSummary ? (
+                  <p className="pt-2 text-zinc-700">
+                    Summary pick: {decodedLabSummary.status} · cup {decodedLabSummary.cupScore} ·{" "}
+                    {decodedLabSummary.gradeConfirmed}
+                  </p>
+                ) : null}
               </div>
             </details>
 
@@ -1473,94 +3709,164 @@ export function RootScreenController() {
   return <ScreenCard title="Unknown State" description="Unable to render current app state." />;
 }
 
-function LineageTree({ lotId, lots, level }: { lotId: string; lots: Lot[]; level: number }) {
-  const lot = lots.find((item) => item.id === lotId);
-  if (!lot) return null;
+const ROLE_CHART_COLORS = ["#0f766e", "#1d4ed8", "#b45309", "#7c3aed", "#be123c", "#334155"];
 
-  return (
-    <div className={`${level > 0 ? "ml-4 border-l border-zinc-200 pl-3" : ""} space-y-2`}>
-      <div className="rounded-xl bg-zinc-50 p-3">
-        <p className="text-sm font-medium text-zinc-900">{lot.id}</p>
-        <p className="text-xs text-zinc-500">{lot.publicLotCode}</p>
-      </div>
-      {lot.parentLotIds.map((parentId) => (
-        <LineageTree key={`${lot.id}-${parentId}`} lotId={parentId} lots={lots} level={level + 1} />
-      ))}
-    </div>
-  );
-}
-
-function buildLineageNodes(
-  rootLotId: string,
-  lots: Lot[],
-  visited: Set<string> = new Set(),
-): { lot: Lot }[] {
-  const lot = lots.find((item) => item.id === rootLotId);
-  if (!lot || visited.has(rootLotId)) return [];
-  visited.add(rootLotId);
-
-  const children = lot.parentLotIds.flatMap((parentId) => buildLineageNodes(parentId, lots, visited));
-  return [{ lot }, ...children];
+function humanizeChartKey(key: string) {
+  return key.replace(/_/g, " ");
 }
 
 function RoleChart({
   chart,
 }: {
-  chart: { type: string; data: Record<string, string | number>[] };
+  chart: { type: string; title?: string; data: Record<string, string | number>[] };
 }) {
   const rows = chart.data ?? [];
   const first = rows[0] ?? {};
   const keys = Object.keys(first);
-  const xKey = keys.find((key) => typeof first[key] === "string") ?? keys[0];
-  const yKey =
-    keys.find((key) => key !== xKey && typeof first[key] === "number") ??
-    keys.find((key) => typeof first[key] === "number") ??
-    keys[0];
+  const xKey = keys.find((k) => typeof first[k] === "string") ?? keys[0];
+  const numericKeys = keys.filter((k) => k !== xKey && typeof first[k] === "number");
+
+  if (!rows.length) {
+    return (
+      <div className="flex h-full min-h-[200px] items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 text-sm text-zinc-500">
+        No chart data — create or record activity to populate this view.
+      </div>
+    );
+  }
 
   if (chart.type === "line") {
+    if (numericKeys.length <= 1) {
+      const yKey =
+        numericKeys[0] ?? keys.find((k) => typeof first[k] === "number") ?? keys[1] ?? keys[0];
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 28, right: 12, left: 8, bottom: 24 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey={xKey}
+              tick={{ fontSize: 11 }}
+              label={{ value: humanizeChartKey(xKey), position: "insideBottom", offset: -14 }}
+            />
+            <YAxis
+              tick={{ fontSize: 11 }}
+              width={48}
+              label={{ value: humanizeChartKey(String(yKey)), angle: -90, position: "insideLeft" }}
+            />
+            <Tooltip />
+            <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: "12px" }} />
+            <Line
+              type="monotone"
+              dataKey={String(yKey)}
+              name={humanizeChartKey(String(yKey))}
+              stroke={ROLE_CHART_COLORS[0]}
+              strokeWidth={2}
+              dot
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      );
+    }
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows}>
+        <LineChart data={rows} margin={{ top: 28, right: 12, left: 8, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} />
-          <YAxis />
+          <XAxis
+            dataKey={xKey}
+            tick={{ fontSize: 11 }}
+            label={{ value: humanizeChartKey(xKey), position: "insideBottom", offset: -14 }}
+          />
+          <YAxis
+            tick={{ fontSize: 11 }}
+            width={48}
+            label={{ value: "Value", angle: -90, position: "insideLeft" }}
+          />
           <Tooltip />
-          <Line type="monotone" dataKey={yKey} stroke="#334155" strokeWidth={2} />
+          <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: "12px" }} />
+          {numericKeys.map((k, i) => (
+            <Line
+              key={k}
+              type="monotone"
+              dataKey={k}
+              name={humanizeChartKey(k)}
+              stroke={ROLE_CHART_COLORS[i % ROLE_CHART_COLORS.length]}
+              strokeWidth={2}
+              dot={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     );
   }
 
   if (chart.type === "pie") {
+    const nameKey = xKey;
+    const valueKey = numericKeys[0] ?? "value";
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+        <PieChart margin={{ top: 8, right: 8, bottom: 36, left: 8 }}>
           <Tooltip />
-          <Pie data={rows} dataKey={yKey} nameKey={xKey} outerRadius={80} fill="#475569" />
+          <Legend verticalAlign="bottom" height={32} wrapperStyle={{ fontSize: "12px" }} />
+          <Pie data={rows} dataKey={valueKey} nameKey={nameKey} outerRadius={88} label>
+            {rows.map((_, i) => (
+              <Cell key={i} fill={ROLE_CHART_COLORS[i % ROLE_CHART_COLORS.length]} />
+            ))}
+          </Pie>
         </PieChart>
       </ResponsiveContainer>
     );
   }
 
   if (chart.type === "funnel") {
+    const valueKey =
+      numericKeys[0] ?? keys.find((k) => typeof first[k] === "number") ?? keys[keys.length - 1];
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <FunnelChart>
+        <FunnelChart margin={{ top: 28, right: 24, left: 24, bottom: 8 }}>
           <Tooltip />
-          <Funnel data={rows} dataKey={yKey} nameKey={xKey} fill="#64748b" />
+          <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: "12px" }} />
+          <Funnel
+            dataKey={valueKey}
+            nameKey={xKey}
+            data={rows}
+            fill={ROLE_CHART_COLORS[0]}
+            isAnimationActive={false}
+          >
+            {rows.map((_, i) => (
+              <Cell key={i} fill={ROLE_CHART_COLORS[i % ROLE_CHART_COLORS.length]} />
+            ))}
+          </Funnel>
         </FunnelChart>
       </ResponsiveContainer>
     );
   }
 
+  const yKey =
+    numericKeys[0] ??
+    keys.find((key) => key !== xKey && typeof first[key] === "number") ??
+    keys[0];
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={rows}>
+      <BarChart data={rows} margin={{ top: 28, right: 12, left: 8, bottom: 24 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xKey} />
-        <YAxis />
+        <XAxis
+          dataKey={xKey}
+          tick={{ fontSize: 11 }}
+          label={{ value: humanizeChartKey(xKey), position: "insideBottom", offset: -14 }}
+        />
+        <YAxis
+          tick={{ fontSize: 11 }}
+          width={48}
+          label={{ value: humanizeChartKey(String(yKey)), angle: -90, position: "insideLeft" }}
+        />
         <Tooltip />
-        <Bar dataKey={yKey} fill="#475569" radius={[6, 6, 0, 0]} />
+        <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: "12px" }} />
+        <Bar
+          dataKey={String(yKey)}
+          name={humanizeChartKey(String(yKey))}
+          fill={ROLE_CHART_COLORS[0]}
+          radius={[6, 6, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

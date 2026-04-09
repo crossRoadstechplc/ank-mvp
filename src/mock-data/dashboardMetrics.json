@@ -101,6 +101,26 @@
         }
       ]
     },
+    "lab_dashboard": {
+      "userId": "usr_009",
+      "summaryCards": [
+        { "label": "Intake Queue", "value": 0 },
+        { "label": "Pending Results", "value": 0 },
+        { "label": "Approved", "value": 0 },
+        { "label": "Failed", "value": 0 }
+      ],
+      "charts": [
+        {
+          "type": "bar",
+          "title": "Lab outcomes (sample)",
+          "data": [
+            { "outcome": "Approved", "count": 1 },
+            { "outcome": "Pending", "count": 0 },
+            { "outcome": "Failed", "count": 0 }
+          ]
+        }
+      ]
+    },
     "bank_dashboard": {
       "userId": "usr_006",
       "summaryCards": [

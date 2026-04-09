@@ -9,6 +9,14 @@ export type RoleKey =
   | "transporter"
   | "lab_officer";
 
+/** Optional audit fields for runtime-created or updated entities */
+export interface AuditMeta {
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
 export interface AppConfig {
   name: string;
   version: string;
@@ -84,7 +92,7 @@ export interface GeoCoordinates {
   lng: number;
 }
 
-export interface Farm {
+export interface Farm extends AuditMeta {
   id: string;
   uid: string;
   name: string;
@@ -104,6 +112,7 @@ export interface Farm {
   polygon: [number, number][];
   eudrStatus: string;
   status: string;
+  notes?: string;
 }
 
 export interface FarmsFile {
@@ -154,7 +163,7 @@ export interface VehiclesFile {
   drivers: Driver[];
 }
 
-export interface Lot {
+export interface Lot extends AuditMeta {
   id: string;
   internalUuid: string;
   publicLotCode: string;
@@ -176,6 +185,11 @@ export interface Lot {
   createdAt: string;
   geoInherited: boolean;
   integrityStatus: string;
+  notes?: string;
+  /** Exporter reservation / hold label for trade MVP */
+  exportReservationStatus?: string | null;
+  /** Post-process transport → lab → export gate (see lab-flow helpers) */
+  labStatus?: string | null;
 }
 
 export interface LotsFile {
@@ -187,7 +201,7 @@ export interface InventoryLoss {
   weightKg: number;
 }
 
-export interface InventoryEvent {
+export interface InventoryEvent extends AuditMeta {
   id: string;
   type: string;
   timestamp: string;
@@ -199,6 +213,7 @@ export interface InventoryEvent {
   vehicleId?: string;
   driverId?: string;
   parentLotIds?: string[];
+  outputLotIds?: string[];
   weightKg?: number;
   reportedWeightKg?: number;
   confirmedWeightKg?: number;
@@ -216,7 +231,7 @@ export interface InventoryEventsFile {
   inventoryEvents: InventoryEvent[];
 }
 
-export interface Rfq {
+export interface Rfq extends AuditMeta {
   id: string;
   uid: string;
   buyerActorId: string;
@@ -240,7 +255,7 @@ export interface RfqsFile {
   rfqs: Rfq[];
 }
 
-export interface Offer {
+export interface Offer extends AuditMeta {
   id: string;
   rfqId: string;
   sellerActorId: string;
@@ -299,7 +314,7 @@ export interface ContractsFile {
   contracts: Contract[];
 }
 
-export interface BankApproval {
+export interface BankApproval extends AuditMeta {
   id: string;
   contractId: string;
   bankActorId: string;
@@ -311,13 +326,15 @@ export interface BankApproval {
   approvedAmountUsd: number;
   decisionAt: string;
   status: string;
+  guaranteeMetadata?: Record<string, string>;
+  exposureNotes?: string;
 }
 
 export interface BankApprovalsFile {
   bankApprovals: BankApproval[];
 }
 
-export interface LabResult {
+export interface LabResult extends AuditMeta {
   id: string;
   lotId: string;
   contractId: string;
@@ -330,6 +347,7 @@ export interface LabResult {
   gradeConfirmed: string;
   status: string;
   issuedAt: string;
+  notes?: string;
 }
 
 export interface LabResultsFile {
@@ -388,3 +406,6 @@ export interface MockDataBundle {
   dashboardMetrics: Record<string, DashboardEntry>;
   lotCodeMap: LotCodeMapItem[];
 }
+
+/** Mutable runtime copy: app + roles always come from seed */
+export type LiveDataBundle = Omit<MockDataBundle, "app" | "roles">;
