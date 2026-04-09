@@ -64,6 +64,14 @@ function ScreenCard({ title, description }: { title: string; description: string
   );
 }
 
+type MassUnit = "kg" | "lb";
+const KG_PER_LB = 0.45359237;
+
+function toKg(value: number, unit: MassUnit): number {
+  if (!Number.isFinite(value)) return 0;
+  return unit === "lb" ? value * KG_PER_LB : value;
+}
+
 export function RootScreenController({
   monitorPreview = false,
   previewEmailPrefill = "",
@@ -160,7 +168,11 @@ export function RootScreenController({
   const [pickFarmId, setPickFarmId] = useState("");
   const [pickWeightKg, setPickWeightKg] = useState("");
   const [validateWeightKg, setValidateWeightKg] = useState("");
+  const [validateWeightUnit, setValidateWeightUnit] = useState<MassUnit>("kg");
+  const [validateTargetLotId, setValidateTargetLotId] = useState<string | null>(null);
   const [processOutputKg, setProcessOutputKg] = useState("");
+  const [processOutputUnit, setProcessOutputUnit] = useState<MassUnit>("kg");
+  const [processLossUnit, setProcessLossUnit] = useState<MassUnit>("kg");
   const [lossRows, setLossRows] = useState<Array<{ type: string; weightKg: string }>>([
     { type: "pulp", weightKg: "" },
   ]);
@@ -241,6 +253,7 @@ export function RootScreenController({
   const [aggReceiveLotId, setAggReceiveLotId] = useState("");
   const [aggSelectedParentIds, setAggSelectedParentIds] = useState<string[]>([]);
   const [aggWeight, setAggWeight] = useState("");
+  const [aggWeightUnit, setAggWeightUnit] = useState<MassUnit>("kg");
   const [processorLotPick, setProcessorLotPick] = useState("");
   const [transporterLotPick, setTransporterLotPick] = useState("");
   const [reservationLabel, setReservationLabel] = useState("");
@@ -277,7 +290,11 @@ export function RootScreenController({
     gradeConfirmed: "G2",
   });
   const [farmerEditWeight, setFarmerEditWeight] = useState("");
+  const [farmerEditWeightUnit, setFarmerEditWeightUnit] = useState<MassUnit>("kg");
   const [farmerEditNotes, setFarmerEditNotes] = useState("");
+  const [pickWeightUnit, setPickWeightUnit] = useState<MassUnit>("kg");
+  const [importerQuantityUnit, setImporterQuantityUnit] = useState<MassUnit>("kg");
+  const [exporterQuantityUnit, setExporterQuantityUnit] = useState<MassUnit>("kg");
   const previewAutoLoginAttempted = useRef(false);
 
   const pendingUser = useMemo(
@@ -385,21 +402,6 @@ export function RootScreenController({
     [data?.labResults, selectedLabResultId],
   );
 
-  const dashboardKey = useMemo(() => {
-    const map: Record<string, string> = {
-      farmer: "farmer_dashboard",
-      aggregator: "aggregator_dashboard",
-      processor: "processor_dashboard",
-      exporter: "exporter_dashboard",
-      importer: "importer_dashboard",
-      bank_officer: "bank_dashboard",
-      admin: "admin_dashboard",
-      transporter: "transporter_dashboard",
-      lab_officer: "lab_dashboard",
-    };
-    return primaryRole ? map[primaryRole] : "";
-  }, [primaryRole]);
-
   const primaryCtaByRole: Record<string, string> = {
     farmer: "Create lot",
     aggregator: "Validate Lot",
@@ -459,11 +461,6 @@ export function RootScreenController({
       activityTitle: "Recent System Exceptions",
     },
   };
-
-  const dashboardEntry = useMemo(() => {
-    if (!data || !dashboardKey) return null;
-    return data.dashboardMetrics[dashboardKey] ?? null;
-  }, [data, dashboardKey]);
 
   const linkedActorId = useMemo(
     () => data?.users.find((user) => user.id === userId)?.linkedActorId ?? null,
@@ -616,8 +613,41 @@ export function RootScreenController({
 
   const chartSpec = useMemo(() => {
     if (!data || !primaryRole) return null;
-    if (dashboardEntry?.charts?.[0]) return dashboardEntry.charts[0];
-
+    if (primaryRole === "farmer") {
+      const mine = data.lots.filter((lot) => lot.originActorId === linkedActorId);
+      return {
+        type: "bar",
+        title: "My lot statuses",
+        data: [
+          { status: "Pending validation", count: mine.filter((l) => l.status === "pending_validation").length },
+          { status: "In stock", count: mine.filter((l) => l.status === "in_stock").length },
+          { status: "Archived/cancelled", count: mine.filter((l) => ["archived", "cancelled"].includes(l.status)).length },
+        ],
+      };
+    }
+    if (primaryRole === "aggregator") {
+      return {
+        type: "bar",
+        title: "Aggregator chain queue",
+        data: [
+          { stage: "Pending validation", count: data.lots.filter((l) => l.status === "pending_validation").length },
+          { stage: "Ready to receive", count: aggregatorReceiveCandidates.length },
+          { stage: "In aggregator custody", count: aggregatorAggregateCandidates.length },
+        ],
+      };
+    }
+    if (primaryRole === "processor") {
+      const processEvents = data.inventoryEvents.filter((e) => e.type.startsWith("PROCESS_"));
+      return {
+        type: "bar",
+        title: "Processor throughput",
+        data: [
+          { metric: "Intake lots", value: processorIntakeLots.length },
+          { metric: "Process events", value: processEvents.length },
+          { metric: "Ready for transport", value: data.lots.filter((l) => l.status === "awaiting_transport").length },
+        ],
+      };
+    }
     if (primaryRole === "transporter") {
       const transfers = data.inventoryEvents.filter(
         (event) =>
@@ -626,22 +656,88 @@ export function RootScreenController({
       );
       return {
         type: "bar",
-        title: "Transport Events",
-        data: [{ name: "Transfers", count: transfers.length }],
+        title: "Transport queue and events",
+        data: [
+          { metric: "Pickup queue", count: transporterPickupCandidates.length },
+          { metric: "Handover queue", count: transporterHandoverCandidates.length },
+          { metric: "Custody events", count: transfers.length },
+        ],
       };
     }
     if (primaryRole === "lab_officer") {
-      const rows = data.labResults
-        .filter((result) => result.labActorId === linkedActorId)
-        .map((result) => ({ sample: result.sampleCode, cupScore: result.cupScore }));
-      return { type: "line", title: "Cup score by sample", data: rows };
+      const mine = data.labResults.filter((result) => result.labActorId === linkedActorId);
+      return {
+        type: "bar",
+        title: "Lab outcomes",
+        data: [
+          { outcome: "Pending", count: mine.filter((r) => r.status === "pending").length },
+          { outcome: "Approved", count: mine.filter((r) => r.status === "approved" || r.status === "final").length },
+          { outcome: "Failed", count: mine.filter((r) => r.status === "failed").length },
+        ],
+      };
     }
-    return { type: "bar", title: "No Data", data: [{ name: "items", value: 0 }] };
-  }, [dashboardEntry, data, linkedActorId, primaryRole]);
+    if (primaryRole === "exporter") {
+      const mine = data.offers.filter((offer) => offer.sellerActorId === linkedActorId);
+      return {
+        type: "bar",
+        title: "Exporter pipeline",
+        data: [
+          { metric: "Eligible lots", count: data.lots.filter((l) => isExportTradeEligibleLot(l, data.labResults)).length },
+          { metric: "Offers", count: mine.length },
+          { metric: "Contracts", count: data.contracts.filter((ctr) => ctr.sellerActorId === linkedActorId).length },
+        ],
+      };
+    }
+    if (primaryRole === "importer") {
+      return {
+        type: "bar",
+        title: "Importer procurement flow",
+        data: [
+          { metric: "RFQs", count: data.rfqs.filter((rfq) => rfq.buyerActorId === linkedActorId).length },
+          { metric: "Offers", count: data.offers.length },
+          { metric: "Contracts", count: data.contracts.filter((ctr) => ctr.buyerActorId === linkedActorId).length },
+        ],
+      };
+    }
+    if (primaryRole === "bank_officer") {
+      const mine = data.bankApprovals.filter((approval) => approval.bankActorId === linkedActorId);
+      return {
+        type: "bar",
+        title: "Bank approvals",
+        data: [
+          { status: "Pending", count: mine.filter((a) => a.status.toLowerCase().includes("pending")).length },
+          { status: "Approved", count: mine.filter((a) => a.status.toLowerCase().includes("approved")).length },
+          { status: "Rejected", count: mine.filter((a) => a.status.toLowerCase().includes("rejected")).length },
+        ],
+      };
+    }
+    if (primaryRole === "admin") {
+      return {
+        type: "bar",
+        title: "System integrity and volume",
+        data: [
+          { metric: "Lots", count: data.lots.length },
+          { metric: "Quarantined", count: data.lots.filter((l) => l.status === "quarantined").length },
+          { metric: "Compromised", count: data.lots.filter((l) => l.integrityStatus === "compromised").length },
+          { metric: "Events", count: data.inventoryEvents.length },
+        ],
+      };
+    }
+    return { type: "bar", title: "Role metrics", data: [] };
+  }, [
+    aggregatorAggregateCandidates.length,
+    aggregatorReceiveCandidates.length,
+    data,
+    linkedActorId,
+    primaryRole,
+    processorIntakeLots.length,
+    transporterPickupCandidates.length,
+    transporterHandoverCandidates.length,
+  ]);
 
   const kpiCards = useMemo(() => {
     if (!data || !primaryRole || !linkedActorId) {
-      return dashboardEntry?.summaryCards?.length ? dashboardEntry.summaryCards.slice(0, 4) : [];
+      return [];
     }
 
     if (primaryRole === "farmer") {
@@ -743,11 +839,10 @@ export function RootScreenController({
       ];
     }
 
-    return dashboardEntry?.summaryCards?.length ? dashboardEntry.summaryCards.slice(0, 4) : [];
+    return [];
   }, [
     aggregatorAggregateCandidates.length,
     aggregatorReceiveCandidates.length,
-    dashboardEntry,
     data,
     linkedActorId,
     primaryRole,
@@ -1156,27 +1251,70 @@ export function RootScreenController({
     return (
       <div className="mx-auto mt-10 w-full max-w-xl space-y-3 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-zinc-900">New RFQ draft</h1>
-        {(
-          [
-            ["title", "title", "Title"],
-            ["commodity", "commodity", "Commodity"],
-            ["form", "form", "Form"],
-            ["targetQuantityKg", "targetQuantityKg", "Target kg"],
-            ["minimumGrade", "minimumGrade", "Min grade"],
-            ["originPreference", "originPreference", "Origin (comma)"],
-            ["incoterm", "incoterm", "Incoterm"],
-            ["deliveryWindowStart", "deliveryWindowStart", "Window start"],
-            ["deliveryWindowEnd", "deliveryWindowEnd", "Window end"],
-          ] as const
-        ).map(([k, _a, ph]) => (
+        <input
+          value={importerRfqForm.title}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, title: e.target.value }))}
+          placeholder="Title"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.commodity}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, commodity: e.target.value }))}
+          placeholder="Commodity"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.form}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, form: e.target.value }))}
+          placeholder="Form"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <div className="flex gap-2">
           <input
-            key={k}
-            value={importerRfqForm[k as keyof typeof importerRfqForm]}
-            onChange={(e) => setImporterRfqForm((f) => ({ ...f, [k]: e.target.value }))}
-            placeholder={ph}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+            value={importerRfqForm.targetQuantityKg}
+            onChange={(e) => setImporterRfqForm((f) => ({ ...f, targetQuantityKg: e.target.value }))}
+            placeholder="Target quantity"
+            className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
           />
-        ))}
+          <select
+            value={importerQuantityUnit}
+            onChange={(e) => setImporterQuantityUnit(e.target.value as MassUnit)}
+            className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+          >
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        </div>
+        <input
+          value={importerRfqForm.minimumGrade}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, minimumGrade: e.target.value }))}
+          placeholder="Min grade"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.originPreference}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, originPreference: e.target.value }))}
+          placeholder="Origin (comma)"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.incoterm}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, incoterm: e.target.value }))}
+          placeholder="Incoterm"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.deliveryWindowStart}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, deliveryWindowStart: e.target.value }))}
+          placeholder="Window start"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
+        <input
+          value={importerRfqForm.deliveryWindowEnd}
+          onChange={(e) => setImporterRfqForm((f) => ({ ...f, deliveryWindowEnd: e.target.value }))}
+          placeholder="Window end"
+          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+        />
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <Button
           type="button"
@@ -1186,7 +1324,7 @@ export function RootScreenController({
               title: importerRfqForm.title,
               commodity: importerRfqForm.commodity,
               form: importerRfqForm.form,
-              targetQuantityKg: Number(importerRfqForm.targetQuantityKg),
+              targetQuantityKg: toKg(Number(importerRfqForm.targetQuantityKg), importerQuantityUnit),
               minimumGrade: importerRfqForm.minimumGrade,
               originPreference: importerRfqForm.originPreference.split(",").map((s) => s.trim()).filter(Boolean),
               incoterm: importerRfqForm.incoterm,
@@ -1281,12 +1419,22 @@ export function RootScreenController({
             </option>
           ))}
         </select>
-        <input
-          value={exporterOfferForm.offeredQuantityKg}
-          onChange={(e) => setExporterOfferForm((f) => ({ ...f, offeredQuantityKg: e.target.value }))}
-          placeholder="Quantity kg"
-          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-        />
+        <div className="flex gap-2">
+          <input
+            value={exporterOfferForm.offeredQuantityKg}
+            onChange={(e) => setExporterOfferForm((f) => ({ ...f, offeredQuantityKg: e.target.value }))}
+            placeholder="Quantity"
+            className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <select
+            value={exporterQuantityUnit}
+            onChange={(e) => setExporterQuantityUnit(e.target.value as MassUnit)}
+            className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+          >
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        </div>
         <input
           value={exporterOfferForm.pricePerKgUsd}
           onChange={(e) => setExporterOfferForm((f) => ({ ...f, pricePerKgUsd: e.target.value }))}
@@ -1305,7 +1453,7 @@ export function RootScreenController({
           onClick={() => {
             const parsed = offerDraftSchema.safeParse({
               rfqId: exporterOfferForm.rfqId,
-              offeredQuantityKg: Number(exporterOfferForm.offeredQuantityKg),
+              offeredQuantityKg: toKg(Number(exporterOfferForm.offeredQuantityKg), exporterQuantityUnit),
               pricePerKgUsd: Number(exporterOfferForm.pricePerKgUsd),
               currency: exporterOfferForm.currency,
               linkedLotIds: exporterOfferForm.linkedLotId ? [exporterOfferForm.linkedLotId] : [],
@@ -1659,18 +1807,28 @@ export function RootScreenController({
             <p className="text-sm text-zinc-600">No lots in your custody yet. Receive lots first.</p>
           )}
         </div>
-        <input
-          value={aggWeight}
-          onChange={(e) => setAggWeight(e.target.value)}
-          placeholder="Output weight kg"
-          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-        />
+        <div className="flex gap-2">
+          <input
+            value={aggWeight}
+            onChange={(e) => setAggWeight(e.target.value)}
+            placeholder="Output weight"
+            className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+          />
+          <select
+            value={aggWeightUnit}
+            onChange={(e) => setAggWeightUnit(e.target.value as MassUnit)}
+            className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+          >
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        </div>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <Button
           type="button"
           className="w-full"
           onClick={() => {
-            const r = createAggregatedLot(aggSelectedParentIds, Number(aggWeight));
+            const r = createAggregatedLot(aggSelectedParentIds, toKg(Number(aggWeight), aggWeightUnit));
             if (!r.ok) setError(r.message);
             else {
               setError(null);
@@ -1770,9 +1928,7 @@ export function RootScreenController({
 
     const selectedMonitorUser =
       monitoredUsers.find((u) => u.id === monitorSelectedUserId) ?? filteredMonitoredUsers[0] ?? null;
-    const previewNamespace = selectedMonitorUser
-      ? `${selectedMonitorUser.id}-${monitorPreviewResetCounter}`
-      : `none-${monitorPreviewResetCounter}`;
+    const previewNamespace = `monitor-${monitorPreviewResetCounter}`;
     const previewUrl = selectedMonitorUser
       ? `/monitor-preview?ns=${encodeURIComponent(previewNamespace)}&email=${encodeURIComponent(
           selectedMonitorUser.email,
@@ -1955,8 +2111,7 @@ export function RootScreenController({
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-semibold text-zinc-900">{chartSpec?.title ?? "Chart"}</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Legend and axis labels describe each series. KPI cards above reflect live persisted state; chart tiles may
-                  use seed trend shapes for layout reference.
+                  Legend and axis labels describe each live runtime series from lots, events, and trade records.
                 </p>
                 <div className="mt-3 h-64 sm:h-72">{chartSpec ? <RoleChart chart={chartSpec} /> : null}</div>
               </div>
@@ -1995,8 +2150,7 @@ export function RootScreenController({
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-semibold text-zinc-900">{chartSpec?.title ?? "Chart"}</p>
           <p className="mt-1 text-xs text-zinc-500">
-            Legend and axis labels describe each series. KPI cards above reflect live persisted state; chart tiles may
-            use seed trend shapes for layout reference.
+            Legend and axis labels describe each live runtime series from lots, events, and trade records.
           </p>
           <div className="mt-3 h-64 sm:h-72">
             {chartSpec ? <RoleChart chart={chartSpec} /> : null}
@@ -2386,19 +2540,29 @@ export function RootScreenController({
                 </option>
               ))}
             </select>
-            <input
-              inputMode="decimal"
-              value={pickWeightKg}
-              onChange={(e) => setPickWeightKg(e.target.value)}
-              placeholder="Weight (kg)"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            />
+            <div className="flex gap-2">
+              <input
+                inputMode="decimal"
+                value={pickWeightKg}
+                onChange={(e) => setPickWeightKg(e.target.value)}
+                placeholder="Weight"
+                className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              />
+              <select
+                value={pickWeightUnit}
+                onChange={(e) => setPickWeightUnit(e.target.value as MassUnit)}
+                className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+              >
+                <option value="kg">kg</option>
+                <option value="lb">lb</option>
+              </select>
+            </div>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <Button
               type="button"
               className="w-full"
               onClick={() => {
-                const result = createMockPickEvent(pickFarmId, Number(pickWeightKg));
+                const result = createMockPickEvent(pickFarmId, toKg(Number(pickWeightKg), pickWeightUnit));
                 if (!result.ok) {
                   setError(result.message);
                   return;
@@ -2457,56 +2621,100 @@ export function RootScreenController({
 
     if (primaryRole === "aggregator") {
       const pendingLots = data.lots.filter((item) => item.status === "pending_validation");
-      const pendingLot =
-        pendingLots.find((item) => item.id === lot.id) ??
-        pendingLots[0] ??
-        lot;
       return (
-        <div className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+        <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-zinc-900">Validate Lot</h1>
           <p className="mt-2 text-sm text-zinc-600">
             Confirms farmer-reported pick weight. After validation the lot is in stock and can appear in your receive
             queue while the prior custodian still holds it.
           </p>
-          {pendingLots.length > 1 ? (
-            <select
-              value={pendingLot.id}
-              onChange={(e) => openLotDetail(e.target.value)}
-              className="mt-4 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            >
-              {pendingLots.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.publicLotCode} · {l.weightKg} kg reported
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 space-y-3">
+            {pendingLots.length ? (
+              pendingLots.map((pl) => (
+                <div
+                  key={pl.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3"
+                >
+                  <div className="text-sm text-zinc-700">
+                    <p className="font-mono text-xs text-zinc-900">{pl.publicLotCode}</p>
+                    <p>Reported: {pl.weightKg} kg</p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="h-9"
+                    onClick={() => {
+                      setValidateTargetLotId(pl.id);
+                      setValidateWeightKg(String(pl.weightKg));
+                      setValidateWeightUnit("kg");
+                      setError(null);
+                    }}
+                  >
+                    Validate
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+                No pending lots. Ask farmer to create new picks first.
+              </p>
+            )}
+          </div>
+          {validateTargetLotId ? (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
+              <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl">
+                <p className="text-sm font-semibold text-zinc-900">Confirm validated data</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Lot {pendingLots.find((l) => l.id === validateTargetLotId)?.publicLotCode ?? validateTargetLotId}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <input
+                    inputMode="decimal"
+                    value={validateWeightKg}
+                    onChange={(e) => setValidateWeightKg(e.target.value)}
+                    placeholder="Confirmed weight"
+                    className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+                  />
+                  <select
+                    value={validateWeightUnit}
+                    onChange={(e) => setValidateWeightUnit(e.target.value as MassUnit)}
+                    className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="lb">lb</option>
+                  </select>
+                </div>
+                {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    onClick={() => {
+                      const kg = toKg(Number(validateWeightKg), validateWeightUnit);
+                      const result = validatePendingLot(validateTargetLotId, kg);
+                      if (!result.ok) {
+                        setError(result.message);
+                        return;
+                      }
+                      setError(null);
+                      setValidateTargetLotId(null);
+                    }}
+                  >
+                    Save validation
+                  </Button>
+                  <Button
+                    type="button"
+                    className="flex-1 border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100"
+                    onClick={() => setValidateTargetLotId(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : null}
-          <p className="mt-2 text-sm text-zinc-600">Lot: {pendingLot.publicLotCode}</p>
-          <p className="mt-1 text-sm text-zinc-600">Reported Weight: {pendingLot.weightKg} kg</p>
-          <div className="mt-6 space-y-4">
-            <input
-              inputMode="decimal"
-              value={validateWeightKg}
-              onChange={(e) => setValidateWeightKg(e.target.value)}
-              placeholder="Confirmed weight (kg)"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            />
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button
-              type="button"
-              className="w-full"
-              disabled={pendingLot.status !== "pending_validation"}
-              onClick={() => {
-                const result = validatePendingLot(pendingLot.id, Number(validateWeightKg));
-                if (!result.ok) {
-                  setError(result.message);
-                  return;
-                }
-                setError(null);
-                goToState("dashboard");
-              }}
-            >
-              Mark Validated
+          <div className="mt-6">
+            <Button type="button" className="w-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => goToState("dashboard")}>
+              Back
             </Button>
           </div>
         </div>
@@ -2528,9 +2736,9 @@ export function RootScreenController({
         "samples",
         "other",
       ];
-      const parsedOutput = Number(processOutputKg || 0);
+      const parsedOutput = toKg(Number(processOutputKg || 0), processOutputUnit);
       const parsedLosses = lossRows
-        .map((row) => ({ type: row.type, weightKg: Number(row.weightKg || 0) }))
+        .map((row) => ({ type: row.type, weightKg: toKg(Number(row.weightKg || 0), processLossUnit) }))
         .filter((row) => row.type.trim() || row.weightKg > 0);
       const totalTypedLoss = parsedLosses.reduce((sum, row) => sum + row.weightKg, 0);
       const massBalancePreview = {
@@ -2560,17 +2768,38 @@ export function RootScreenController({
           ) : null}
           <p className="mt-2 text-sm text-zinc-600">Lot: {processLot.publicLotCode} ({processLot.weightKg} kg input)</p>
           <div className="mt-6 space-y-4">
-            <input
-              inputMode="decimal"
-              value={processOutputKg}
-              onChange={(e) => setProcessOutputKg(e.target.value)}
-              placeholder="Output weight (kg)"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-            />
+            <div className="flex gap-2">
+              <input
+                inputMode="decimal"
+                value={processOutputKg}
+                onChange={(e) => setProcessOutputKg(e.target.value)}
+                placeholder="Output weight"
+                className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+              />
+              <select
+                value={processOutputUnit}
+                onChange={(e) => setProcessOutputUnit(e.target.value as MassUnit)}
+                className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+              >
+                <option value="kg">kg</option>
+                <option value="lb">lb</option>
+              </select>
+            </div>
 
             <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
               <summary className="cursor-pointer text-sm font-medium text-zinc-900">Typed Loss Rows</summary>
               <div className="mt-3 space-y-3">
+                <div className="rounded-lg bg-white p-2 text-xs text-zinc-600">
+                  Loss unit
+                  <select
+                    value={processLossUnit}
+                    onChange={(e) => setProcessLossUnit(e.target.value as MassUnit)}
+                    className="ml-2 rounded border border-zinc-200 px-2 py-1"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="lb">lb</option>
+                  </select>
+                </div>
                 {lossRows.map((row, index) => (
                   <div key={`${index}-${row.type}`} className="rounded-lg bg-white p-3 shadow-sm">
                     <select
@@ -2597,7 +2826,7 @@ export function RootScreenController({
                         next[index] = { ...next[index], weightKg: e.target.value };
                         setLossRows(next);
                       }}
-                      placeholder="Loss weight (kg)"
+                      placeholder={`Loss weight (${processLossUnit})`}
                       className="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
                     />
                     {lossRows.length > 1 ? (
@@ -2674,7 +2903,7 @@ export function RootScreenController({
               type="button"
               className="w-full"
               onClick={() => {
-                const result = processLotWithLosses(processLot.id, Number(processOutputKg), parsedLosses, {
+                const result = processLotWithLosses(processLot.id, parsedOutput, parsedLosses, {
                   qualityGrade: processGrade.trim() || null,
                   notes: processNotes.trim() || undefined,
                   facilityId: processFacilityId || null,
@@ -3102,13 +3331,23 @@ export function RootScreenController({
           <details className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <summary className="cursor-pointer text-sm font-semibold text-zinc-900">Edit provisional lot</summary>
             <div className="mt-3 space-y-2">
-              <input
-                inputMode="decimal"
-                value={farmerEditWeight !== "" ? farmerEditWeight : String(lot.weightKg)}
-                onChange={(e) => setFarmerEditWeight(e.target.value)}
-                placeholder="Weight kg"
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
-              />
+              <div className="flex gap-2">
+                <input
+                  inputMode="decimal"
+                  value={farmerEditWeight !== "" ? farmerEditWeight : String(lot.weightKg)}
+                  onChange={(e) => setFarmerEditWeight(e.target.value)}
+                  placeholder="Weight"
+                  className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
+                />
+                <select
+                  value={farmerEditWeightUnit}
+                  onChange={(e) => setFarmerEditWeightUnit(e.target.value as MassUnit)}
+                  className="w-24 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm"
+                >
+                  <option value="kg">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
               <textarea
                 value={farmerEditNotes !== "" ? farmerEditNotes : (lot.notes ?? "")}
                 onChange={(e) => setFarmerEditNotes(e.target.value)}
@@ -3120,7 +3359,7 @@ export function RootScreenController({
                 type="button"
                 className="w-full"
                 onClick={() => {
-                  const w = Number(farmerEditWeight || lot.weightKg);
+                  const w = toKg(Number(farmerEditWeight || lot.weightKg), farmerEditWeightUnit);
                   updateProvisionalLot(lot.id, {
                     weightKg: w,
                     notes: farmerEditNotes || lot.notes,

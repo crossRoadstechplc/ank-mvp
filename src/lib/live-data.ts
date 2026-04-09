@@ -48,3 +48,33 @@ export function clearLiveStorage(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(getRuntimeLiveStorageKey());
 }
+
+export async function readLiveDataFromApi(): Promise<LiveDataBundle | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const response = await fetch("/api/live-data", { cache: "no-store" });
+    if (!response.ok) return null;
+    const parsed = (await response.json()) as LiveStorageEnvelope;
+    if (parsed.version !== LIVE_STORAGE_VERSION || !parsed.payload) return null;
+    return parsed.payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeLiveDataToApi(live: LiveDataBundle): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const envelope: LiveStorageEnvelope = {
+      version: LIVE_STORAGE_VERSION,
+      payload: live,
+    };
+    await fetch("/api/live-data", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(envelope),
+    });
+  } catch {
+    // Best-effort sync only; local cache remains source of truth when offline.
+  }
+}

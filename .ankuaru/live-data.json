@@ -1,0 +1,1358 @@
+{
+  "version": 1,
+  "payload": {
+    "organizations": [
+      {
+        "id": "org_farm_coop_01",
+        "name": "Biftu Highlands Cooperative",
+        "type": "cooperative"
+      },
+      {
+        "id": "org_agg_01",
+        "name": "Yirga Collection House",
+        "type": "aggregator"
+      },
+      {
+        "id": "org_proc_01",
+        "name": "Abeba Washing Station",
+        "type": "processor"
+      },
+      {
+        "id": "org_exp_01",
+        "name": "Blue Nile Export PLC",
+        "type": "exporter"
+      },
+      {
+        "id": "org_imp_01",
+        "name": "Nordic Roast GmbH",
+        "type": "importer"
+      },
+      {
+        "id": "org_bank_01",
+        "name": "Abyssinia Trade Bank",
+        "type": "bank"
+      },
+      {
+        "id": "org_lab_01",
+        "name": "Origin Cup Labs",
+        "type": "lab"
+      },
+      {
+        "id": "org_admin_01",
+        "name": "Ankuaru Platform Operations",
+        "type": "platform_operator"
+      }
+    ],
+    "users": [
+      {
+        "id": "usr_001",
+        "fullName": "Tadesse Bekele",
+        "phone": "+251900000001",
+        "email": "tadesse@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "farmer",
+        "roleIds": [
+          "role_farmer"
+        ],
+        "organizationId": "org_farm_coop_01",
+        "linkedActorId": "actor_farmer_01"
+      },
+      {
+        "id": "usr_002",
+        "fullName": "Meseret Alemu",
+        "phone": "+251900000002",
+        "email": "meseret@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "aggregator",
+        "roleIds": [
+          "role_aggregator"
+        ],
+        "organizationId": "org_agg_01",
+        "linkedActorId": "actor_agg_01"
+      },
+      {
+        "id": "usr_003",
+        "fullName": "Hana Tesfaye",
+        "phone": "+251900000003",
+        "email": "hana@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "processor",
+        "roleIds": [
+          "role_processor"
+        ],
+        "organizationId": "org_proc_01",
+        "linkedActorId": "actor_proc_01"
+      },
+      {
+        "id": "usr_004",
+        "fullName": "Samuel Girma",
+        "phone": "+251900000004",
+        "email": "samuel@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "exporter",
+        "roleIds": [
+          "role_exporter"
+        ],
+        "organizationId": "org_exp_01",
+        "linkedActorId": "actor_exp_01"
+      },
+      {
+        "id": "usr_005",
+        "fullName": "Lena Hoffmann",
+        "phone": "+491700000005",
+        "email": "lena@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "importer",
+        "roleIds": [
+          "role_importer"
+        ],
+        "organizationId": "org_imp_01",
+        "linkedActorId": "actor_imp_01"
+      },
+      {
+        "id": "usr_006",
+        "fullName": "Dawit Kebede",
+        "phone": "+251900000006",
+        "email": "dawit@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "bank_officer",
+        "roleIds": [
+          "role_bank_officer"
+        ],
+        "organizationId": "org_bank_01",
+        "linkedActorId": "actor_bank_01"
+      },
+      {
+        "id": "usr_007",
+        "fullName": "Selam Worku",
+        "phone": "+251900000007",
+        "email": "selam@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "admin",
+        "roleIds": [
+          "role_admin"
+        ],
+        "organizationId": "org_admin_01",
+        "linkedActorId": "actor_admin_01"
+      },
+      {
+        "id": "usr_008",
+        "fullName": "Abdul Rahman",
+        "phone": "+251900000008",
+        "email": "abdul@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "transporter",
+        "roleIds": [
+          "role_transporter"
+        ],
+        "organizationId": "org_agg_01",
+        "linkedActorId": "actor_transport_01"
+      },
+      {
+        "id": "usr_009",
+        "fullName": "Ruth Daniel",
+        "phone": "+251900000009",
+        "email": "ruth@mock.ankuaru",
+        "password": "Pass123!",
+        "otpEnabled": true,
+        "defaultOtp": "111111",
+        "status": "active",
+        "primaryRole": "lab_officer",
+        "roleIds": [
+          "role_lab_officer"
+        ],
+        "organizationId": "org_lab_01",
+        "linkedActorId": "actor_lab_01"
+      }
+    ],
+    "actors": [
+      {
+        "id": "actor_farmer_01",
+        "type": "individual",
+        "displayName": "Tadesse Bekele",
+        "primaryRole": "farmer",
+        "organizationId": "org_farm_coop_01",
+        "userId": "usr_001",
+        "status": "active",
+        "rating": 4.6,
+        "trustScore": 82,
+        "kycStatus": "verified"
+      },
+      {
+        "id": "actor_farmer_02",
+        "type": "individual",
+        "displayName": "Almaz Chala",
+        "primaryRole": "farmer",
+        "organizationId": "org_farm_coop_01",
+        "userId": null,
+        "status": "active",
+        "rating": 4.3,
+        "trustScore": 77,
+        "kycStatus": "verified"
+      },
+      {
+        "id": "actor_agg_01",
+        "type": "organization",
+        "displayName": "Yirga Collection House",
+        "primaryRole": "aggregator",
+        "organizationId": "org_agg_01",
+        "userId": "usr_002",
+        "status": "active",
+        "rating": 4.4,
+        "trustScore": 79,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_proc_01",
+        "type": "organization",
+        "displayName": "Abeba Washing Station",
+        "primaryRole": "processor",
+        "organizationId": "org_proc_01",
+        "userId": "usr_003",
+        "status": "active",
+        "rating": 4.5,
+        "trustScore": 84,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_exp_01",
+        "type": "organization",
+        "displayName": "Blue Nile Export PLC",
+        "primaryRole": "exporter",
+        "organizationId": "org_exp_01",
+        "userId": "usr_004",
+        "status": "active",
+        "rating": 4.7,
+        "trustScore": 88,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_imp_01",
+        "type": "organization",
+        "displayName": "Nordic Roast GmbH",
+        "primaryRole": "importer",
+        "organizationId": "org_imp_01",
+        "userId": "usr_005",
+        "status": "active",
+        "rating": 4.8,
+        "trustScore": 90,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_bank_01",
+        "type": "organization",
+        "displayName": "Abyssinia Trade Bank",
+        "primaryRole": "bank_officer",
+        "organizationId": "org_bank_01",
+        "userId": "usr_006",
+        "status": "active",
+        "rating": 4.9,
+        "trustScore": 93,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_admin_01",
+        "type": "organization",
+        "displayName": "Ankuaru Platform Operations",
+        "primaryRole": "admin",
+        "organizationId": "org_admin_01",
+        "userId": "usr_007",
+        "status": "active",
+        "rating": 5,
+        "trustScore": 99,
+        "kybStatus": "verified"
+      },
+      {
+        "id": "actor_transport_01",
+        "type": "individual",
+        "displayName": "Abdul Rahman",
+        "primaryRole": "transporter",
+        "organizationId": "org_agg_01",
+        "userId": "usr_008",
+        "status": "active",
+        "rating": 4.2,
+        "trustScore": 74,
+        "kycStatus": "verified"
+      },
+      {
+        "id": "actor_lab_01",
+        "type": "organization",
+        "displayName": "Origin Cup Labs",
+        "primaryRole": "lab_officer",
+        "organizationId": "org_lab_01",
+        "userId": "usr_009",
+        "status": "active",
+        "rating": 4.8,
+        "trustScore": 91,
+        "kybStatus": "verified"
+      }
+    ],
+    "farms": [
+      {
+        "id": "farm_001",
+        "uid": "FARM-YRG-001",
+        "name": "Chelchele Plot A",
+        "ownerActorId": "actor_farmer_01",
+        "managerActorId": "actor_farmer_01",
+        "organizationId": "org_farm_coop_01",
+        "region": "Sidama",
+        "zone": "Aleta Wondo",
+        "woreda": "Aleta Wondo",
+        "kebele": "Chelchele",
+        "country": "Ethiopia",
+        "elevationM": 1980,
+        "sizeHectares": 1.4,
+        "coffeeVarieties": [
+          "74110",
+          "74112"
+        ],
+        "farmingType": "smallholder",
+        "coordinates": {
+          "lat": 6.6241,
+          "lng": 38.4729
+        },
+        "polygon": [
+          [
+            38.4721,
+            6.6248
+          ],
+          [
+            38.473,
+            6.6251
+          ],
+          [
+            38.4734,
+            6.6243
+          ],
+          [
+            38.4727,
+            6.6238
+          ],
+          [
+            38.4721,
+            6.6248
+          ]
+        ],
+        "eudrStatus": "ready",
+        "status": "active"
+      },
+      {
+        "id": "farm_002",
+        "uid": "FARM-YRG-002",
+        "name": "Konga Slope East",
+        "ownerActorId": "actor_farmer_02",
+        "managerActorId": "actor_farmer_02",
+        "organizationId": "org_farm_coop_01",
+        "region": "Sidama",
+        "zone": "Aleta Wondo",
+        "woreda": "Aleta Wondo",
+        "kebele": "Konga",
+        "country": "Ethiopia",
+        "elevationM": 2015,
+        "sizeHectares": 1.1,
+        "coffeeVarieties": [
+          "Heirloom"
+        ],
+        "farmingType": "smallholder",
+        "coordinates": {
+          "lat": 6.6328,
+          "lng": 38.4894
+        },
+        "polygon": [
+          [
+            38.4888,
+            6.6331
+          ],
+          [
+            38.4898,
+            6.6334
+          ],
+          [
+            38.4901,
+            6.6327
+          ],
+          [
+            38.4892,
+            6.6323
+          ],
+          [
+            38.4888,
+            6.6331
+          ]
+        ],
+        "eudrStatus": "ready",
+        "status": "active"
+      }
+    ],
+    "facilities": [
+      {
+        "id": "fac_agg_01",
+        "uid": "FAC-AGG-001",
+        "name": "Yirga Collection Yard",
+        "facilityType": "aggregation_center",
+        "ownerActorId": "actor_agg_01",
+        "operatorActorId": "actor_agg_01",
+        "organizationId": "org_agg_01",
+        "region": "Sidama",
+        "woreda": "Aleta Wondo",
+        "coordinates": {
+          "lat": 6.6401,
+          "lng": 38.5012
+        },
+        "status": "active"
+      },
+      {
+        "id": "fac_proc_01",
+        "uid": "FAC-PROC-001",
+        "name": "Abeba Washing Station",
+        "facilityType": "washing_station",
+        "ownerActorId": "actor_proc_01",
+        "operatorActorId": "actor_proc_01",
+        "organizationId": "org_proc_01",
+        "region": "Sidama",
+        "woreda": "Aleta Wondo",
+        "coordinates": {
+          "lat": 6.6582,
+          "lng": 38.5198
+        },
+        "status": "active"
+      },
+      {
+        "id": "fac_wh_01",
+        "uid": "FAC-WH-001",
+        "name": "Blue Nile Export Warehouse",
+        "facilityType": "export_warehouse",
+        "ownerActorId": "actor_exp_01",
+        "operatorActorId": "actor_exp_01",
+        "organizationId": "org_exp_01",
+        "region": "Addis Ababa",
+        "woreda": "Akaky Kaliti",
+        "coordinates": {
+          "lat": 8.8937,
+          "lng": 38.7896
+        },
+        "status": "active"
+      }
+    ],
+    "vehicles": [
+      {
+        "id": "veh_001",
+        "uid": "TRK-001",
+        "plateNumber": "AA-3-45678",
+        "vehicleType": "truck",
+        "ownerActorId": "actor_agg_01",
+        "assignedDriverActorId": "actor_transport_01",
+        "capacityKg": 5000,
+        "gpsEnabled": true,
+        "status": "active"
+      }
+    ],
+    "drivers": [
+      {
+        "id": "drv_001",
+        "uid": "DRV-001",
+        "actorId": "actor_transport_01",
+        "licenseNumber": "ETH-DL-900123",
+        "phone": "+251900000008",
+        "status": "active"
+      }
+    ],
+    "lots": [
+      {
+        "id": "lot_001",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-001",
+        "publicLotCode": "ETH-A91F-C47B-22D8-001",
+        "traceKey": "TRC-001-INT",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "farm_pick",
+        "farmId": "farm_001",
+        "originActorId": "actor_farmer_01",
+        "currentOwnerActorId": "actor_farmer_01",
+        "currentCustodianActorId": "actor_farmer_01",
+        "facilityId": null,
+        "weightKg": 1250,
+        "status": "pending_validation",
+        "qualityGrade": null,
+        "parentLotIds": [],
+        "childLotIds": [],
+        "harvestDate": "2026-04-01T08:15:00Z",
+        "createdAt": "2026-04-01T08:15:00Z",
+        "geoInherited": true,
+        "integrityStatus": "provisional"
+      },
+      {
+        "id": "lot_002",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-002",
+        "publicLotCode": "ETH-B72D-19AF-88C4-002",
+        "traceKey": "TRC-002-INT",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "farm_pick",
+        "farmId": "farm_002",
+        "originActorId": "actor_farmer_02",
+        "currentOwnerActorId": "actor_farmer_02",
+        "currentCustodianActorId": "actor_farmer_02",
+        "facilityId": null,
+        "weightKg": 980,
+        "status": "pending_validation",
+        "qualityGrade": null,
+        "parentLotIds": [],
+        "childLotIds": [],
+        "harvestDate": "2026-04-01T09:05:00Z",
+        "createdAt": "2026-04-01T09:05:00Z",
+        "geoInherited": true,
+        "integrityStatus": "provisional"
+      },
+      {
+        "id": "lot_003",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-003",
+        "publicLotCode": "ETH-3F2A-9C7D-18B3-003",
+        "traceKey": "TRC-003-INT",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "aggregated",
+        "farmId": null,
+        "originActorId": "actor_agg_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "weightKg": 2205,
+        "status": "in_stock",
+        "qualityGrade": null,
+        "parentLotIds": [
+          "lot_001",
+          "lot_002"
+        ],
+        "childLotIds": [
+          "lot_004"
+        ],
+        "harvestDate": "2026-04-01T12:30:00Z",
+        "createdAt": "2026-04-01T12:30:00Z",
+        "geoInherited": true,
+        "integrityStatus": "verified"
+      },
+      {
+        "id": "lot_004",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-004",
+        "publicLotCode": "ETH-7A3F-91C2-B84D-004",
+        "traceKey": "TRC-004-INT",
+        "commodity": "coffee",
+        "form": "parchment",
+        "sourceType": "processed",
+        "farmId": null,
+        "originActorId": "actor_proc_01",
+        "currentOwnerActorId": "actor_exp_01",
+        "currentCustodianActorId": "actor_transport_01",
+        "facilityId": "fac_proc_01",
+        "weightKg": 960,
+        "status": "in_transit",
+        "labStatus": "pending_transport",
+        "qualityGrade": "G2",
+        "parentLotIds": [
+          "lot_003"
+        ],
+        "childLotIds": [
+          "lot_005"
+        ],
+        "harvestDate": "2026-04-01T12:30:00Z",
+        "createdAt": "2026-04-03T15:20:00Z",
+        "geoInherited": true,
+        "integrityStatus": "verified"
+      },
+      {
+        "id": "lot_005",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-005",
+        "publicLotCode": "ETH-4F2A-9C7D-18B3-005",
+        "traceKey": "TRC-005-INT",
+        "commodity": "coffee",
+        "form": "green",
+        "sourceType": "processed",
+        "farmId": null,
+        "originActorId": "actor_proc_01",
+        "currentOwnerActorId": "actor_exp_01",
+        "currentCustodianActorId": "actor_exp_01",
+        "facilityId": "fac_wh_01",
+        "weightKg": 835,
+        "status": "contract_reserved",
+        "labStatus": "lab_cleared",
+        "qualityGrade": "G1",
+        "parentLotIds": [
+          "lot_004"
+        ],
+        "childLotIds": [],
+        "harvestDate": "2026-04-01T12:30:00Z",
+        "createdAt": "2026-04-05T11:10:00Z",
+        "geoInherited": true,
+        "integrityStatus": "verified"
+      },
+      {
+        "id": "lot_006",
+        "internalUuid": "a4b88f55-d1ab-48c4-b21c-006",
+        "publicLotCode": "ETH-0D8E-5B71-CC44-006",
+        "traceKey": "TRC-006-INT",
+        "commodity": "coffee",
+        "form": "cherry",
+        "sourceType": "farm_pick",
+        "farmId": "farm_001",
+        "originActorId": "actor_farmer_01",
+        "currentOwnerActorId": "actor_agg_01",
+        "currentCustodianActorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "weightKg": 700,
+        "status": "quarantined",
+        "qualityGrade": null,
+        "parentLotIds": [],
+        "childLotIds": [],
+        "harvestDate": "2026-04-02T08:40:00Z",
+        "createdAt": "2026-04-02T08:40:00Z",
+        "geoInherited": true,
+        "integrityStatus": "compromised"
+      }
+    ],
+    "inventoryEvents": [
+      {
+        "id": "evt_001",
+        "type": "PICK",
+        "timestamp": "2026-04-01T08:15:00Z",
+        "lotId": "lot_001",
+        "actorId": "actor_farmer_01",
+        "fromActorId": null,
+        "toActorId": "actor_farmer_01",
+        "facilityId": null,
+        "weightKg": 1250,
+        "status": "recorded",
+        "verificationStatus": "provisional",
+        "notes": "USSD-origin provisional pick entry"
+      },
+      {
+        "id": "evt_002",
+        "type": "PICK",
+        "timestamp": "2026-04-01T09:05:00Z",
+        "lotId": "lot_002",
+        "actorId": "actor_farmer_02",
+        "fromActorId": null,
+        "toActorId": "actor_farmer_02",
+        "facilityId": null,
+        "weightKg": 980,
+        "status": "recorded",
+        "verificationStatus": "provisional",
+        "notes": "Mobile-origin pick entry"
+      },
+      {
+        "id": "evt_003",
+        "type": "VALIDATE_PICK",
+        "timestamp": "2026-04-01T11:00:00Z",
+        "lotId": "lot_001",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_01",
+        "toActorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "reportedWeightKg": 1250,
+        "confirmedWeightKg": 1235,
+        "varianceKg": 15,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Downstream validation adjusted weight"
+      },
+      {
+        "id": "evt_004",
+        "type": "VALIDATE_PICK",
+        "timestamp": "2026-04-01T11:20:00Z",
+        "lotId": "lot_002",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_02",
+        "toActorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "reportedWeightKg": 980,
+        "confirmedWeightKg": 970,
+        "varianceKg": 10,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Downstream validation adjusted weight"
+      },
+      {
+        "id": "evt_005",
+        "type": "AGGREGATE",
+        "timestamp": "2026-04-01T12:30:00Z",
+        "lotId": "lot_003",
+        "parentLotIds": [
+          "lot_001",
+          "lot_002"
+        ],
+        "actorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "inputWeightKg": 2205,
+        "outputWeightKg": 2205,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Aggregation at collection yard"
+      },
+      {
+        "id": "evt_006",
+        "type": "TRANSFER_CUSTODY",
+        "timestamp": "2026-04-02T06:45:00Z",
+        "lotId": "lot_003",
+        "actorId": "actor_transport_01",
+        "fromActorId": "actor_agg_01",
+        "toActorId": "actor_transport_01",
+        "vehicleId": "veh_001",
+        "driverId": "drv_001",
+        "weightKg": 2205,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Loaded for transfer to washing station"
+      },
+      {
+        "id": "evt_007",
+        "type": "RECEIVE_TRANSPORT",
+        "timestamp": "2026-04-02T08:05:00Z",
+        "lotId": "lot_003",
+        "actorId": "actor_proc_01",
+        "fromActorId": "actor_transport_01",
+        "toActorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "confirmedWeightKg": 2205,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Received at washing station"
+      },
+      {
+        "id": "evt_008",
+        "type": "PROCESS_PULP_AND_WASH",
+        "timestamp": "2026-04-03T09:30:00Z",
+        "lotId": "lot_004",
+        "parentLotIds": [
+          "lot_003"
+        ],
+        "actorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "inputWeightKg": 2205,
+        "outputWeightKg": 960,
+        "losses": [
+          {
+            "type": "pulp",
+            "weightKg": 850
+          },
+          {
+            "type": "mucilage",
+            "weightKg": 110
+          },
+          {
+            "type": "moisture_loss",
+            "weightKg": 250
+          },
+          {
+            "type": "defects",
+            "weightKg": 20
+          },
+          {
+            "type": "samples",
+            "weightKg": 15
+          }
+        ],
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Wet processing to parchment"
+      },
+      {
+        "id": "evt_009",
+        "type": "TRANSFER_OWNERSHIP",
+        "timestamp": "2026-04-04T10:00:00Z",
+        "lotId": "lot_004",
+        "actorId": "actor_exp_01",
+        "fromActorId": "actor_proc_01",
+        "toActorId": "actor_exp_01",
+        "weightKg": 960,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Ownership transferred to exporter"
+      },
+      {
+        "id": "evt_010",
+        "type": "PROCESS_HULL_AND_GRADE",
+        "timestamp": "2026-04-05T11:10:00Z",
+        "lotId": "lot_005",
+        "parentLotIds": [
+          "lot_004"
+        ],
+        "actorId": "actor_proc_01",
+        "facilityId": "fac_proc_01",
+        "inputWeightKg": 960,
+        "outputWeightKg": 835,
+        "losses": [
+          {
+            "type": "parchment",
+            "weightKg": 92
+          },
+          {
+            "type": "husk",
+            "weightKg": 18
+          },
+          {
+            "type": "defects",
+            "weightKg": 10
+          },
+          {
+            "type": "samples",
+            "weightKg": 5
+          }
+        ],
+        "varianceKg": 0,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Final green exportable lot created"
+      },
+      {
+        "id": "evt_011",
+        "type": "TRANSFER_CUSTODY",
+        "timestamp": "2026-04-05T14:20:00Z",
+        "lotId": "lot_005",
+        "actorId": "actor_exp_01",
+        "fromActorId": "actor_proc_01",
+        "toActorId": "actor_exp_01",
+        "facilityId": "fac_wh_01",
+        "weightKg": 835,
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Transferred to exporter warehouse"
+      },
+      {
+        "id": "evt_012",
+        "type": "PICK",
+        "timestamp": "2026-04-02T08:40:00Z",
+        "lotId": "lot_006",
+        "actorId": "actor_farmer_01",
+        "fromActorId": null,
+        "toActorId": "actor_farmer_01",
+        "weightKg": 700,
+        "status": "recorded",
+        "verificationStatus": "provisional",
+        "notes": "Second lot from farm 001"
+      },
+      {
+        "id": "evt_013",
+        "type": "TRANSFER_CUSTODY",
+        "timestamp": "2026-04-02T10:30:00Z",
+        "lotId": "lot_006",
+        "actorId": "actor_agg_01",
+        "fromActorId": "actor_farmer_01",
+        "toActorId": "actor_agg_01",
+        "facilityId": "fac_agg_01",
+        "weightKg": 700,
+        "status": "recorded",
+        "verificationStatus": "pending",
+        "notes": "Received without proper downstream validation"
+      },
+      {
+        "id": "evt_014",
+        "type": "QUARANTINE",
+        "timestamp": "2026-04-02T16:00:00Z",
+        "lotId": "lot_006",
+        "actorId": "actor_admin_01",
+        "reasonCode": "MISSING_VALIDATION",
+        "status": "recorded",
+        "verificationStatus": "verified",
+        "notes": "Lot quarantined due to missing validation event"
+      }
+    ],
+    "rfqs": [
+      {
+        "id": "rfq_001",
+        "uid": "RFQ-001",
+        "buyerActorId": "actor_imp_01",
+        "title": "Ethiopian Washed Arabica G1 - 1 Container",
+        "commodity": "coffee",
+        "form": "green",
+        "targetQuantityKg": 19200,
+        "minimumGrade": "G1",
+        "originPreference": [
+          "Sidama",
+          "Yirgacheffe"
+        ],
+        "incoterm": "FOB Djibouti",
+        "deliveryWindowStart": "2026-05-10",
+        "deliveryWindowEnd": "2026-05-25",
+        "status": "open",
+        "participationRule": "shortlist_and_rating",
+        "minimumTrustScore": 80,
+        "invitedActorIds": [
+          "actor_exp_01"
+        ],
+        "createdAt": "2026-04-06T09:00:00Z"
+      }
+    ],
+    "offers": [
+      {
+        "id": "offer_001",
+        "rfqId": "rfq_001",
+        "sellerActorId": "actor_exp_01",
+        "linkedLotIds": [
+          "lot_005"
+        ],
+        "offeredQuantityKg": 835,
+        "pricePerKgUsd": 7.9,
+        "currency": "USD",
+        "status": "submitted",
+        "createdAt": "2026-04-06T12:15:00Z"
+      }
+    ],
+    "auctions": [
+      {
+        "id": "auc_001",
+        "uid": "AUC-001",
+        "auctionType": "reverse",
+        "createdByActorId": "actor_imp_01",
+        "title": "Reverse Auction - Specialty Ethiopian Green Coffee",
+        "commodity": "coffee",
+        "status": "scheduled",
+        "accessMode": "invite_only",
+        "invitedActorIds": [
+          "actor_exp_01"
+        ],
+        "minimumTrustScore": 85,
+        "startTime": "2026-04-10T09:00:00Z",
+        "endTime": "2026-04-10T12:00:00Z"
+      }
+    ],
+    "contracts": [
+      {
+        "id": "ctr_001",
+        "uid": "CTR-001",
+        "rfqId": "rfq_001",
+        "offerId": "offer_001",
+        "buyerActorId": "actor_imp_01",
+        "sellerActorId": "actor_exp_01",
+        "linkedLotIds": [
+          "lot_005"
+        ],
+        "contractType": "sale_of_goods",
+        "quantityKg": 835,
+        "pricePerKgUsd": 7.9,
+        "currency": "USD",
+        "incoterm": "FOB Djibouti",
+        "paymentTerms": "Bank guaranteed",
+        "qualityTerms": "Lab certificate required",
+        "deliveryTerms": "Within agreed shipment window",
+        "status": "bank_review",
+        "createdAt": "2026-04-06T15:20:00Z"
+      }
+    ],
+    "bankApprovals": [
+      {
+        "id": "ba_001",
+        "contractId": "ctr_001",
+        "bankActorId": "actor_bank_01",
+        "buyerApprovalStatus": "approved",
+        "sellerApprovalStatus": "approved",
+        "guaranteeType": "payment_and_performance",
+        "guaranteeStatus": "issued",
+        "partialDefaultCoverage": true,
+        "approvedAmountUsd": 6596.5,
+        "decisionAt": "2026-04-07T10:00:00Z",
+        "status": "active"
+      }
+    ],
+    "labResults": [
+      {
+        "id": "lab_001",
+        "lotId": "lot_005",
+        "contractId": "ctr_001",
+        "labActorId": "actor_lab_01",
+        "sampleCode": "SMP-001",
+        "moisturePercent": 10.4,
+        "screenSize": "15+",
+        "defectCount": 6,
+        "cupScore": 85.75,
+        "gradeConfirmed": "G1",
+        "status": "approved",
+        "issuedAt": "2026-04-07T14:30:00Z"
+      }
+    ],
+    "dashboardMetrics": {
+      "farmer_dashboard": {
+        "userId": "usr_001",
+        "summaryCards": [
+          {
+            "label": "My Farms",
+            "value": 1
+          },
+          {
+            "label": "Open Lots",
+            "value": 2
+          },
+          {
+            "label": "Pending Validation",
+            "value": 1
+          },
+          {
+            "label": "Trust Score",
+            "value": 82
+          }
+        ],
+        "charts": [
+          {
+            "type": "bar",
+            "title": "Picked Lots by Day",
+            "data": [
+              {
+                "day": "Apr 1",
+                "kg": 1250
+              },
+              {
+                "day": "Apr 2",
+                "kg": 700
+              }
+            ]
+          }
+        ]
+      },
+      "aggregator_dashboard": {
+        "userId": "usr_002",
+        "summaryCards": [
+          {
+            "label": "Stock On Hand",
+            "value": "2205 kg"
+          },
+          {
+            "label": "Pending Mismatches",
+            "value": 1
+          },
+          {
+            "label": "Validated Lots",
+            "value": 2
+          },
+          {
+            "label": "Trust Score",
+            "value": 79
+          }
+        ],
+        "charts": [
+          {
+            "type": "line",
+            "title": "Intake vs Outflow",
+            "data": [
+              {
+                "day": "Apr 1",
+                "intake": 2205,
+                "outflow": 0
+              },
+              {
+                "day": "Apr 2",
+                "intake": 700,
+                "outflow": 2205
+              }
+            ]
+          }
+        ]
+      },
+      "processor_dashboard": {
+        "userId": "usr_003",
+        "summaryCards": [
+          {
+            "label": "Lots in Process",
+            "value": 2
+          },
+          {
+            "label": "Parchment Output",
+            "value": "960 kg"
+          },
+          {
+            "label": "Green Output",
+            "value": "835 kg"
+          },
+          {
+            "label": "Avg Yield",
+            "value": "37.9%"
+          }
+        ],
+        "charts": [
+          {
+            "type": "pie",
+            "title": "Processing Loss Breakdown",
+            "data": [
+              {
+                "name": "Pulp",
+                "value": 850
+              },
+              {
+                "name": "Mucilage",
+                "value": 110
+              },
+              {
+                "name": "Moisture",
+                "value": 250
+              },
+              {
+                "name": "Parchment",
+                "value": 92
+              },
+              {
+                "name": "Husk",
+                "value": 18
+              }
+            ]
+          }
+        ]
+      },
+      "exporter_dashboard": {
+        "userId": "usr_004",
+        "summaryCards": [
+          {
+            "label": "Ready Lots",
+            "value": 1
+          },
+          {
+            "label": "Reserved Lots",
+            "value": 1
+          },
+          {
+            "label": "Contracts in Review",
+            "value": 1
+          },
+          {
+            "label": "Compliance Ready",
+            "value": "92%"
+          }
+        ],
+        "charts": [
+          {
+            "type": "bar",
+            "title": "Lot Status",
+            "data": [
+              {
+                "status": "Ready",
+                "count": 1
+              },
+              {
+                "status": "Reserved",
+                "count": 1
+              },
+              {
+                "status": "Quarantined",
+                "count": 0
+              }
+            ]
+          }
+        ]
+      },
+      "importer_dashboard": {
+        "userId": "usr_005",
+        "summaryCards": [
+          {
+            "label": "Open RFQs",
+            "value": 1
+          },
+          {
+            "label": "Offers Received",
+            "value": 1
+          },
+          {
+            "label": "Contracts Active",
+            "value": 1
+          },
+          {
+            "label": "Approved Suppliers",
+            "value": 1
+          }
+        ],
+        "charts": [
+          {
+            "type": "funnel",
+            "title": "Procurement Funnel",
+            "data": [
+              {
+                "stage": "RFQ",
+                "value": 1
+              },
+              {
+                "stage": "Offer",
+                "value": 1
+              },
+              {
+                "stage": "Contract",
+                "value": 1
+              },
+              {
+                "stage": "Shipment",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "lab_dashboard": {
+        "userId": "usr_009",
+        "summaryCards": [
+          {
+            "label": "Intake Queue",
+            "value": 0
+          },
+          {
+            "label": "Pending Results",
+            "value": 0
+          },
+          {
+            "label": "Approved",
+            "value": 0
+          },
+          {
+            "label": "Failed",
+            "value": 0
+          }
+        ],
+        "charts": [
+          {
+            "type": "bar",
+            "title": "Lab outcomes (sample)",
+            "data": [
+              {
+                "outcome": "Approved",
+                "count": 1
+              },
+              {
+                "outcome": "Pending",
+                "count": 0
+              },
+              {
+                "outcome": "Failed",
+                "count": 0
+              }
+            ]
+          }
+        ]
+      },
+      "bank_dashboard": {
+        "userId": "usr_006",
+        "summaryCards": [
+          {
+            "label": "Approval Queue",
+            "value": 1
+          },
+          {
+            "label": "Guarantees Issued",
+            "value": 1
+          },
+          {
+            "label": "Exposure",
+            "value": "$6,596.50"
+          },
+          {
+            "label": "Defaults",
+            "value": 0
+          }
+        ],
+        "charts": [
+          {
+            "type": "bar",
+            "title": "Guarantee Exposure by Contract",
+            "data": [
+              {
+                "contract": "CTR-001",
+                "amount": 6596.5
+              }
+            ]
+          }
+        ]
+      },
+      "admin_dashboard": {
+        "userId": "usr_007",
+        "summaryCards": [
+          {
+            "label": "Users",
+            "value": 9
+          },
+          {
+            "label": "Active Lots",
+            "value": 6
+          },
+          {
+            "label": "Quarantined Lots",
+            "value": 1
+          },
+          {
+            "label": "Pending KYC",
+            "value": 0
+          }
+        ],
+        "charts": [
+          {
+            "type": "line",
+            "title": "System Exceptions Over Time",
+            "data": [
+              {
+                "day": "Apr 1",
+                "exceptions": 0
+              },
+              {
+                "day": "Apr 2",
+                "exceptions": 1
+              },
+              {
+                "day": "Apr 3",
+                "exceptions": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "lotCodeMap": [
+      {
+        "publicLotCode": "ETH-A91F-C47B-22D8-001",
+        "lotId": "lot_001",
+        "traceKey": "TRC-001-INT"
+      },
+      {
+        "publicLotCode": "ETH-B72D-19AF-88C4-002",
+        "lotId": "lot_002",
+        "traceKey": "TRC-002-INT"
+      },
+      {
+        "publicLotCode": "ETH-3F2A-9C7D-18B3-003",
+        "lotId": "lot_003",
+        "traceKey": "TRC-003-INT"
+      },
+      {
+        "publicLotCode": "ETH-7A3F-91C2-B84D-004",
+        "lotId": "lot_004",
+        "traceKey": "TRC-004-INT"
+      },
+      {
+        "publicLotCode": "ETH-4F2A-9C7D-18B3-005",
+        "lotId": "lot_005",
+        "traceKey": "TRC-005-INT"
+      },
+      {
+        "publicLotCode": "ETH-0D8E-5B71-CC44-006",
+        "lotId": "lot_006",
+        "traceKey": "TRC-006-INT"
+      }
+    ]
+  }
+}

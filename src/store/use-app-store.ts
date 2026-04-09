@@ -11,7 +11,9 @@ import {
   cloneLiveFromSeed,
   clearLiveStorage,
   mergeLiveWithSeed,
+  readLiveDataFromApi,
   readLiveDataFromStorage,
+  writeLiveDataToApi,
   writeLiveDataToStorage,
 } from "@/lib/live-data";
 import { getRuntimeSessionStorageKey } from "@/lib/runtime-scope";
@@ -236,6 +238,7 @@ export const useAppStore = create<AppStore>()(
           liveData: nextLive,
           data: mergeLiveWithSeed(seed, nextLive),
         });
+        void writeLiveDataToApi(nextLive);
       };
 
       const patchLive = (fn: (l: LiveDataBundle) => LiveDataBundle) => {
@@ -403,6 +406,19 @@ export const useAppStore = create<AppStore>()(
               : stateMeta.auth_login.primaryAction,
             isHydrating: false,
           });
+          void (async () => {
+            const remote = await readLiveDataFromApi();
+            if (remote) {
+              writeLiveDataToStorage(remote);
+              set({
+                liveData: remote,
+                data: mergeLiveWithSeed(seed, remote),
+              });
+              return;
+            }
+            // First boot on server-side store: publish local baseline.
+            await writeLiveDataToApi(live);
+          })();
         },
 
         resetLiveDataToSeed: () => {
@@ -410,6 +426,7 @@ export const useAppStore = create<AppStore>()(
           if (!seed) return;
           const live = cloneLiveFromSeed(seed);
           writeLiveDataToStorage(live);
+          void writeLiveDataToApi(live);
           set({
             liveData: live,
             data: mergeLiveWithSeed(seed, live),
@@ -437,6 +454,7 @@ export const useAppStore = create<AppStore>()(
           const seed = get().seedData ?? loadMockData();
           const live = cloneLiveFromSeed(seed);
           writeLiveDataToStorage(live);
+          void writeLiveDataToApi(live);
           set({
             seedData: seed,
             liveData: live,
@@ -483,11 +501,21 @@ export const useAppStore = create<AppStore>()(
           const seed = get().seedData;
           if (!seed) return;
           const stored = readLiveDataFromStorage();
-          if (!stored) return;
-          set({
-            liveData: stored,
-            data: mergeLiveWithSeed(seed, stored),
-          });
+          if (stored) {
+            set({
+              liveData: stored,
+              data: mergeLiveWithSeed(seed, stored),
+            });
+          }
+          void (async () => {
+            const remote = await readLiveDataFromApi();
+            if (!remote) return;
+            writeLiveDataToStorage(remote);
+            set({
+              liveData: remote,
+              data: mergeLiveWithSeed(seed, remote),
+            });
+          })();
         },
 
         createFarmerLot: (farmId, weightKg) => {
